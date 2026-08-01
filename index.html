@@ -429,6 +429,21 @@ function seedTransactions(artisans){
 
 const seededArtisans = seedArtisans();
 
+// Persistance locale (survit aux rechargements de page sur cet appareil/navigateur)
+const ADMIN_STORAGE_KEY="artisanrescue_admin_config_v1";
+function loadAdminConfig(){
+  try{
+    const raw=localStorage.getItem(ADMIN_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function saveAdminConfig(){
+  try{
+    localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify({ admin:state.admin, settings:state.settings }));
+  }catch(e){ /* stockage indisponible : la session reste fonctionnelle sans persistance */ }
+}
+const savedConfig = loadAdminConfig();
+
 const state = {
   view:"home",
   artisans:seededArtisans,
@@ -440,9 +455,9 @@ const state = {
   searchQuery:"",
   filterCountry:"",
   adminAuthed:false,
-  admin:{ username:"admin", password:"admin123" },
+  admin: (savedConfig && savedConfig.admin) ? savedConfig.admin : { username:"admin", password:"admin123" },
   currentArtisanId:null,      // artisan connecté à son espace
-  settings:{
+  settings: (savedConfig && savedConfig.settings) ? savedConfig.settings : {
     unlockPrice:2000,
     currency:"FCFA",
     numbers:{
@@ -1085,10 +1100,10 @@ function viewAdminGate(){
   <div class="hero" style="padding-top:56px;">
     <div class="eyebrow">Back-office</div>
     <h1 style="font-size:32px;">Connexion administrateur</h1>
-    <p>Identifiants par défaut : <span class="mono">admin / admin123</span> — à modifier après connexion.</p>
+    <p>Accès réservé. Connectez-vous avec vos identifiants administrateur.</p>
   </div>
   <div class="panel" style="max-width:420px;">
-    <div class="field"><label>Identifiant</label><input id="adm-user" placeholder="admin"></div>
+    <div class="field"><label>Identifiant</label><input id="adm-user" placeholder="Votre identifiant"></div>
     <div class="field"><label>Mot de passe</label>
       <div class="pw-wrap"><input id="adm-pass" type="password" placeholder="••••••••">
         <button type="button" class="pw-eye" onclick="togglePwd('adm-pass',this)">👁</button></div>
@@ -1450,6 +1465,7 @@ function cssId(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-');}
 window.saveUnlockPrice=function(){
   state.settings.unlockPrice=Number(document.getElementById("set-price").value)||state.settings.unlockPrice;
   state.settings.currency=document.getElementById("set-currency").value||state.settings.currency;
+  saveAdminConfig();
   toast("Prix de déverrouillage mis à jour.");
   render();
 };
@@ -1458,6 +1474,7 @@ window.saveNumbers=function(){
     const el=document.getElementById("num-"+cssId(name));
     if(el) state.settings.numbers[name]=el.value;
   });
+  saveAdminConfig();
   toast("Numéros de paiement mis à jour.");
   render();
 };
@@ -1466,6 +1483,7 @@ window.saveAdminCreds=function(){
   const p=document.getElementById("set-pass").value.trim();
   if(u) state.admin.username=u;
   if(p) state.admin.password=p;
+  saveAdminConfig();
   toast("Identifiants administrateur mis à jour.");
   render();
 };
