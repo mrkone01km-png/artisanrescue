@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ArtisanRescue — Marketplace des artisans</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#141b30">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ArtisanRescue">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-apple-touch.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+:root{
+  --indigo-950:#141b30;
+  --indigo-900:#1b2a4a;
+  --indigo-800:#243761;
+  --indigo-700:#324a7d;
+  --ochre:#e8a33d;
+  --ochre-dim:#c98a2e;
+  --terracotta:#c1502e;
+  --kente:#3c7a5d;
+  --kente-dim:#2e6049;
+  --cream:#f5efe3;
+  --cream-dim:#cfc6b3;
+  --line:rgba(245,239,227,0.14);
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--indigo-950);color:var(--cream);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,.display{font-family:'Fraunces',serif;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+a{color:inherit;}
+button{font-family:inherit;cursor:pointer;}
+::selection{background:var(--ochre);color:var(--indigo-950);}
+
+/* wax-pattern divider — signature element */
+.wax{
+  height:10px;width:100%;
+  background:
+    repeating-linear-gradient(135deg, var(--ochre) 0 6px, transparent 6px 14px),
+    repeating-linear-gradient(45deg, var(--terracotta) 0 6px, transparent 6px 14px);
+  background-size:20px 10px,20px 10px;
+  background-position:0 0, 0 0;
+  opacity:0.9;
+}
+
+.topbar{
+  position:sticky;top:0;z-index:40;
+  background:var(--indigo-950);
+  border-bottom:1px solid var(--line);
+}
+.topbar-inner{
+  max-width:1180px;margin:0 auto;padding:14px 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:0.2px;}
+.logo-mark{
+  width:38px;height:38px;border-radius:9px;
+  background:conic-gradient(from 210deg, var(--ochre), var(--terracotta), var(--kente), var(--ochre));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Fraunces',serif;font-weight:700;color:var(--indigo-950);font-size:14px;letter-spacing:-0.5px;
+}
+nav{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+.navbtn{
+  background:transparent;border:1px solid transparent;color:var(--cream-dim);
+  padding:8px 14px;border-radius:20px;font-size:14px;font-weight:500;transition:.15s;
+}
+.navbtn:hover{color:var(--cream);}
+.navbtn.active{background:var(--indigo-800);color:var(--ochre);border-color:var(--line);}
+
+.wrap{max-width:1180px;margin:0 auto;padding:40px 24px 80px;}
+.hero{padding:56px 0 36px;}
+.eyebrow{color:var(--ochre);text-transform:uppercase;letter-spacing:1.6px;font-size:12px;font-weight:600;margin-bottom:14px;}
+.hero h1{font-size:44px;line-height:1.08;font-weight:600;margin:0 0 16px;max-width:720px;}
+.hero p{color:var(--cream-dim);font-size:16px;max-width:560px;line-height:1.6;margin:0 0 26px;}
+.btnrow{display:flex;gap:12px;flex-wrap:wrap;}
+.btn{
+  padding:12px 22px;border-radius:10px;border:none;font-size:14.5px;font-weight:600;
+  display:inline-flex;align-items:center;gap:8px;transition:.15s;
+}
+.btn-ochre{background:var(--ochre);color:var(--indigo-950);}
+.btn-ochre:hover{background:#f2b358;}
+.btn-outline{background:transparent;border:1px solid var(--line);color:var(--cream);}
+.btn-outline:hover{border-color:var(--ochre);color:var(--ochre);}
+.btn-kente{background:var(--kente);color:var(--cream);}
+.btn-kente:hover{background:var(--kente-dim);}
+.btn-danger{background:transparent;border:1px solid var(--terracotta);color:var(--terracotta);}
+.btn-danger:hover{background:var(--terracotta);color:var(--cream);}
+.btn:disabled{opacity:0.45;cursor:not-allowed;}
+.btn-sm{padding:7px 12px;font-size:12.5px;border-radius:7px;}
+
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px;}
+select,input,textarea{
+  background:var(--indigo-900);border:1px solid var(--line);color:var(--cream);
+  padding:10px 12px;border-radius:8px;font-size:14px;font-family:inherit;
+}
+select:focus,input:focus,textarea:focus{outline:1.5px solid var(--ochre);}
+label{font-size:12.5px;color:var(--cream-dim);display:block;margin-bottom:6px;font-weight:500;}
+.field{margin-bottom:14px;}
+
+.pw-wrap{position:relative;}
+.pw-wrap input{width:100%;padding-right:42px;}
+.pw-eye{
+  position:absolute;right:4px;top:50%;transform:translateY(-50%);
+  background:transparent;border:none;color:var(--cream-dim);
+  width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+}
+.pw-eye:hover{color:var(--ochre);background:var(--indigo-800);}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px;}
+.card{
+  background:var(--indigo-900);border:1px solid var(--line);border-radius:14px;
+  padding:20px;transition:.15s;
+}
+.card:hover{border-color:var(--ochre-dim);transform:translateY(-2px);}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.avatar{
+  width:44px;height:44px;border-radius:50%;background:var(--indigo-800);
+  display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--ochre);font-family:'Fraunces',serif;
+}
+.badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;letter-spacing:.3px;}
+.badge-sector{background:rgba(232,163,61,0.15);color:var(--ochre);}
+.badge-active{background:rgba(60,122,93,0.18);color:var(--kente);}
+.badge-suspended{background:rgba(193,80,46,0.18);color:var(--terracotta);}
+.badge-pending{background:rgba(203,196,179,0.15);color:var(--cream-dim);}
+.card h3{margin:2px 0 2px;font-size:17px;}
+.meta{font-size:12.5px;color:var(--cream-dim);margin-bottom:10px;}
+.stars{color:var(--ochre);font-size:13px;margin-bottom:10px;}
+.contact-line{
+  display:flex;align-items:center;gap:8px;background:var(--indigo-950);
+  border:1px dashed var(--line);border-radius:8px;padding:9px 11px;font-size:13px;margin-top:6px;
+}
+.blur-phone{filter:blur(4px);letter-spacing:1px;}
+
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin:44px 0 18px;flex-wrap:wrap;gap:10px;}
+.section-head h2{font-size:24px;margin:0;font-weight:600;}
+.section-head p{color:var(--cream-dim);font-size:13.5px;margin:4px 0 0;}
+
+.modal-bg{
+  position:fixed;inset:0;background:rgba(20,27,48,0.72);backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;
+}
+.modal{
+  background:var(--indigo-900);border:1px solid var(--line);border-radius:16px;
+  padding:28px;max-width:460px;width:100%;max-height:88vh;overflow:auto;
+}
+.modal h2{margin:0 0 4px;font-size:21px;}
+.modal .sub{color:var(--cream-dim);font-size:13.5px;margin-bottom:20px;}
+.close-x{float:right;background:transparent;border:none;color:var(--cream-dim);font-size:20px;}
+
+.paymethods{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;}
+.paymethod{
+  border:1.5px solid var(--line);border-radius:10px;padding:12px;text-align:center;font-size:13px;font-weight:600;
+}
+.paymethod.sel{border-color:var(--ochre);background:rgba(232,163,61,0.1);color:var(--ochre);}
+
+.price-tag{font-family:'IBM Plex Mono',monospace;font-size:26px;color:var(--ochre);font-weight:600;margin:8px 0 2px;}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th{text-align:left;color:var(--cream-dim);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;padding:10px 12px;border-bottom:1px solid var(--line);}
+td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle;}
+tr:hover td{background:rgba(255,255,255,0.02);}
+.table-wrap{background:var(--indigo-900);border:1px solid var(--line);border-radius:14px;overflow:hidden;padding:6px;overflow-x:auto;}
+
+.statcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:34px;}
+.statcard{background:var(--indigo-900);border:1px solid var(--line);border-radius:14px;padding:18px 20px;}
+.statcard .n{font-family:'IBM Plex Mono',monospace;font-size:28px;color:var(--ochre);font-weight:600;}
+.statcard .l{font-size:12.5px;color:var(--cream-dim);margin-top:4px;}
+
+.barlist{display:flex;flex-direction:column;gap:10px;}
+.barrow{display:grid;grid-template-columns:140px 1fr 60px;gap:10px;align-items:center;font-size:13px;}
+.bartrack{background:var(--indigo-950);border-radius:6px;height:10px;overflow:hidden;}
+.barfill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--ochre),var(--terracotta));}
+.chart-box{position:relative;height:260px;margin-top:10px;}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:6px;}
+.kpi{background:var(--indigo-950);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+.kpi .n{font-family:'IBM Plex Mono',monospace;font-size:20px;color:var(--ochre);font-weight:600;}
+.kpi .l{font-size:11.5px;color:var(--cream-dim);margin-top:3px;}
+.kpi .d{font-size:11px;margin-top:4px;font-weight:600;}
+.kpi .d.up{color:var(--kente);}
+.kpi .d.down{color:var(--terracotta);}
+
+.two-col{display:grid;grid-template-columns:1.1fr 0.9fr;gap:20px;}
+@media(max-width:820px){.two-col{grid-template-columns:1fr;}}
+
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:700px){.settings-grid{grid-template-columns:1fr;}}
+.panel{background:var(--indigo-900);border:1px solid var(--line);border-radius:14px;padding:22px;}
+.panel h3{margin:0 0 4px;font-size:16px;}
+.panel .sub{color:var(--cream-dim);font-size:12.5px;margin-bottom:16px;}
+
+.toast{
+  position:fixed;bottom:22px;right:22px;background:var(--kente);color:var(--cream);
+  padding:13px 20px;border-radius:10px;font-size:13.5px;font-weight:600;z-index:200;
+  box-shadow:0 8px 24px rgba(0,0,0,0.3);
+}
+.pill-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.pill{font-size:11.5px;padding:4px 10px;border-radius:20px;background:var(--indigo-950);border:1px solid var(--line);color:var(--cream-dim);}
+
+.footer-note{color:var(--cream-dim);font-size:12px;text-align:center;margin-top:60px;line-height:1.7;}
+.empty{color:var(--cream-dim);font-size:14px;padding:30px;text-align:center;border:1px dashed var(--line);border-radius:12px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="logo"><div class="logo-mark">AR</div>ArtisanRescue</div>
+    <nav id="mainnav"></nav>
+    <button id="install-app-btn" class="btn btn-ochre btn-sm" style="display:none;" onclick="installApp()">📲 Installer l'app</button>
+  </div>
+  <div class="wax"></div>
+</div>
+
+<div class="wrap" id="app"></div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script>
+/* ============================ DONNÉES ============================ */
+
+const SECTORS = [
+  "Bâtiment","Métal","Bois","Textile","Cuir","Agroalimentaire","Beauté",
+  "Automobile","Électronique","Artisanat d'art","Agriculture","Fabrication artisanale",
+  "Imprimerie","Musique","Décoration"
+];
+
+const METIERS_BY_SECTOR = {
+  "Bâtiment":["Maçon","Coffreur","Ferrailleur","Charpentier","Menuisier bois","Menuisier aluminium","Ébéniste","Plombier","Électricien bâtiment","Carreleur","Peintre en bâtiment","Plâtrier","Staffeur","Vitrier","Soudeur","Serrurier","Forgeron","Couvreur","Étancheur","Climaticien","Frigoriste","Installateur de panneaux solaires","Pisciniste","Décorateur d'intérieur","Jardinier paysagiste"],
+  "Automobile":["Mécanicien automobile","Électricien automobile","Carrossier","Peintre automobile","Vulcanisateur","Spécialiste climatisation auto","Réparateur de motos","Réparateur de vélos","Réparateur d'engins agricoles","Réparateur de poids lourds"],
+  "Textile":["Couturier","Styliste-modéliste","Brodeur","Tricoteur","Tisserand","Teinturier","Retoucheur","Fabricant de chaussures","Cordonnier","Maroquinier"],
+  "Artisanat d'art":["Sculpteur","Sculpteur sur bois","Sculpteur sur pierre","Céramiste","Potier","Verrier","Bijoutier","Joaillier","Graveur","Calligraphe","Encadreur","Fabricant d'objets décoratifs","Fabricant de meubles artisanaux"],
+  "Agroalimentaire":["Boulanger","Pâtissier","Chocolatier","Glacier","Traiteur","Charcutier","Boucher","Poissonnier","Fumeur de poisson","Transformateur de viande","Fabricant de jus naturels","Fabricant de confitures","Fabricant d'épices","Torréfacteur de café","Transformateur de cacao","Producteur d'huile artisanale","Fabricant de savon traditionnel"],
+  "Bois":["Fabricant de meubles","Fabricant de cuisines","Fabricant de portes","Fabricant de fenêtres","Tourneur sur bois","Restaurateur de meubles"],
+  "Cuir":["Sellier","Bourrelier","Fabricant de sacs","Fabricant de ceintures"],
+  "Métal":["Ferronnier","Chaudronnier","Métallier","Fabricant de portails","Fabricant de grilles","Fabricant de citernes"],
+  "Électronique":["Réparateur de téléphones","Réparateur d'ordinateurs","Réparateur de téléviseurs","Réparateur d'électroménager","Installateur réseau","Installateur vidéosurveillance","Installateur d'alarmes"],
+  "Imprimerie":["Sérigraphe","Imprimeur","Relieur","Graveur","Fabricant d'enseignes"],
+  "Beauté":["Coiffeur","Coiffeuse","Barbier","Esthéticien(ne)","Prothésiste ongulaire","Maquilleur(se)","Fabricant de cosmétiques artisanaux","Parfumeur artisanal"],
+  "Agriculture":["Pépiniériste","Horticulteur","Apiculteur","Pisciculteur artisanal","Fabricant de compost","Élagueur"],
+  "Fabrication artisanale":["Fabricant de briques","Fabricant de pavés","Fabricant de blocs","Fabricant de matelas","Fabricant de moustiquaires","Fabricant de rideaux","Fabricant de bougies","Fabricant de paniers","Vannier","Fabricant de balais","Fabricant de nattes"],
+  "Musique":["Luthier","Facteur de djembés","Facteur de balafons","Réparateur d'instruments de musique"],
+  "Décoration":["Décorateur d'intérieur","Fabricant de masques","Fabricant de statuettes","Fabricant de pagnes artisanaux","Fabricant d'objets en raphia","Fabricant d'objets en bambou","Fabricant d'objets en calebasse","Fabricant de bijoux traditionnels"]
+};
+
+const COUNTRIES = [
+  {name:"Côte d'Ivoire",prefix:"+225"},{name:"Sénégal",prefix:"+221"},{name:"Mali",prefix:"+223"},
+  {name:"Burkina Faso",prefix:"+226"},{name:"Bénin",prefix:"+229"},{name:"Togo",prefix:"+228"},
+  {name:"Guinée",prefix:"+224"},{name:"Niger",prefix:"+227"},{name:"Cameroun",prefix:"+237"},
+  {name:"Gabon",prefix:"+241"},{name:"Congo (RDC)",prefix:"+243"},{name:"Congo-Brazzaville",prefix:"+242"},
+  {name:"Maroc",prefix:"+212"},{name:"Algérie",prefix:"+213"},{name:"Tunisie",prefix:"+216"},
+  {name:"Ghana",prefix:"+233"},{name:"Nigeria",prefix:"+234"},{name:"France",prefix:"+33"},
+  {name:"Belgique",prefix:"+32"},{name:"Canada",prefix:"+1"},{name:"États-Unis",prefix:"+1"},
+  {name:"Royaume-Uni",prefix:"+44"},{name:"Allemagne",prefix:"+49"},{name:"Espagne",prefix:"+34"},
+  {name:"Italie",prefix:"+39"},{name:"Suisse",prefix:"+41"},{name:"Portugal",prefix:"+351"},
+  {name:"Brésil",prefix:"+55"},{name:"Inde",prefix:"+91"},{name:"Chine",prefix:"+86"},
+  {name:"Émirats arabes unis",prefix:"+971"},{name:"Afrique du Sud",prefix:"+27"}
+];
+
+const CITIES = {
+  "Côte d'Ivoire":["Abidjan","Bouaké","Yamoussoukro","San-Pédro","Korhogo"],
+  "Sénégal":["Dakar","Thiès","Saint-Louis"],
+  "Mali":["Bamako","Sikasso"],
+  "Burkina Faso":["Ouagadougou","Bobo-Dioulasso"],
+  "Bénin":["Cotonou","Porto-Novo"],
+  "Togo":["Lomé"],
+  "Guinée":["Conakry"],
+  "Niger":["Niamey"],
+  "Cameroun":["Douala","Yaoundé"],
+  "Gabon":["Libreville"],
+  "Congo (RDC)":["Kinshasa"],
+  "Congo-Brazzaville":["Brazzaville"],
+  "Maroc":["Casablanca","Rabat"],
+  "Algérie":["Alger"],
+  "Tunisie":["Tunis"],
+  "Ghana":["Accra","Kumasi"],
+  "Nigeria":["Lagos","Abuja"],
+  "France":["Paris","Lyon","Marseille"],
+  "Belgique":["Bruxelles"],
+  "Canada":["Toronto"],
+  "États-Unis":["New York"],
+  "Royaume-Uni":["Londres"],
+  "Allemagne":["Berlin"],
+  "Espagne":["Madrid"],
+  "Italie":["Rome"],
+  "Suisse":["Genève"],
+  "Portugal":["Lisbonne"],
+  "Brésil":["São Paulo"],
+  "Inde":["Mumbai"],
+  "Chine":["Shanghai"],
+  "Émirats arabes unis":["Dubaï"],
+  "Afrique du Sud":["Johannesburg"]
+};
+function cityFor(country){const c=CITIES[country];return c?c[Math.floor(Math.random()*c.length)]:"Ville centrale";}
+
+// Coordonnées géographiques (latitude, longitude) des principaux lieux d'enregistrement.
+// Utilisées pour enrichir les exports et la cartographie — approximatives (échelle ville/capitale).
+const CITY_COORDS = {
+  "Abidjan|Côte d'Ivoire":[5.3600,-4.0083], "Bouaké|Côte d'Ivoire":[7.6906,-5.0300],
+  "Yamoussoukro|Côte d'Ivoire":[6.8276,-5.2893], "San-Pédro|Côte d'Ivoire":[4.7485,-6.6363],
+  "Korhogo|Côte d'Ivoire":[9.4580,-5.6296],
+  "Dakar|Sénégal":[14.7167,-17.4677], "Thiès|Sénégal":[14.7910,-16.9359], "Saint-Louis|Sénégal":[16.0179,-16.4896],
+  "Bamako|Mali":[12.6392,-8.0029], "Sikasso|Mali":[11.3167,-5.6667],
+  "Ouagadougou|Burkina Faso":[12.3714,-1.5197], "Bobo-Dioulasso|Burkina Faso":[11.1771,-4.2979],
+  "Cotonou|Bénin":[6.3703,2.3912], "Porto-Novo|Bénin":[6.4969,2.6289],
+  "Lomé|Togo":[6.1319,1.2228],
+  "Conakry|Guinée":[9.6412,-13.5784],
+  "Niamey|Niger":[13.5137,2.1098],
+  "Douala|Cameroun":[4.0511,9.7679], "Yaoundé|Cameroun":[3.8480,11.5021],
+  "Libreville|Gabon":[0.4162,9.4673],
+  "Kinshasa|Congo (RDC)":[-4.4419,15.2663],
+  "Brazzaville|Congo-Brazzaville":[-4.2634,15.2429],
+  "Casablanca|Maroc":[33.5731,-7.5898], "Rabat|Maroc":[34.0209,-6.8416],
+  "Alger|Algérie":[36.7538,3.0588],
+  "Tunis|Tunisie":[36.8065,10.1815],
+  "Accra|Ghana":[5.6037,-0.1870], "Kumasi|Ghana":[6.6885,-1.6244],
+  "Lagos|Nigeria":[6.5244,3.3792], "Abuja|Nigeria":[9.0765,7.3986],
+  "Paris|France":[48.8566,2.3522], "Lyon|France":[45.7640,4.8357], "Marseille|France":[43.2965,5.3698],
+  "Bruxelles|Belgique":[50.8503,4.3517],
+  "Toronto|Canada":[43.6511,-79.3832],
+  "New York|États-Unis":[40.7128,-74.0060],
+  "Londres|Royaume-Uni":[51.5074,-0.1278],
+  "Berlin|Allemagne":[52.5200,13.4050],
+  "Madrid|Espagne":[40.4168,-3.7038],
+  "Rome|Italie":[41.9028,12.4964],
+  "Genève|Suisse":[46.2044,6.1432],
+  "Lisbonne|Portugal":[38.7223,-9.1393],
+  "São Paulo|Brésil":[-23.5505,-46.6333],
+  "Mumbai|Inde":[19.0760,72.8777],
+  "Shanghai|Chine":[31.2304,121.4737],
+  "Dubaï|Émirats arabes unis":[25.2048,55.2708],
+  "Johannesburg|Afrique du Sud":[-26.2041,28.0473]
+};
+
+// Renvoie [lat, lng] pour une ville+pays donnés : correspondance exacte, sinon capitale/1ère ville connue du pays.
+function getCoords(country, city){
+  const exact = CITY_COORDS[city+"|"+country];
+  if(exact) return exact;
+  const fallbackCity = CITIES[country] && CITIES[country][0];
+  if(fallbackCity) return CITY_COORDS[fallbackCity+"|"+country] || ["",""];
+  return ["",""];
+}
+
+const FIRST_NAMES=["Kouadio","Aminata","Moussa","Fatou","Ibrahim","Awa","Yao","Mariam","Seydou","Adjoa","Bakary","Nadège","Karim","Salimata","Landry"];
+const LAST_NAMES=["Kouassi","Diop","Traoré","Bamba","Koné","N'Guessan","Cissé","Sanogo","Ouattara","Camara","Diallo"];
+function rand(arr){return arr[Math.floor(Math.random()*arr.length)];}
+function randPhone(){return "0"+Math.floor(100000000+Math.random()*899999999).toString().slice(0,8);}
+
+function seedArtisans(){
+  const list=[];
+  const statuses=["actif","actif","actif","actif","suspendu"];
+  for(let i=0;i<14;i++){
+    const sector=rand(SECTORS);
+    const metier=rand(METIERS_BY_SECTOR[sector]);
+    const country=rand(COUNTRIES).name;
+    list.push({
+      id:"A"+(1000+i),
+      name:rand(FIRST_NAMES)+" "+rand(LAST_NAMES),
+      sector, metier, country, city:cityFor(country),
+      phone:randPhone(),
+      password:"demo1234",
+      rating:(2.6+Math.random()*2.3).toFixed(1),
+      reviews:Math.floor(3+Math.random()*40),
+      status:rand(statuses),
+      bio:"Spécialiste "+metier.toLowerCase()+" avec plusieurs années d'expérience sur des chantiers et commandes locales.",
+      joined:"2026-0"+(1+Math.floor(Math.random()*6))+"-1"+Math.floor(Math.random()*9)
+    });
+  }
+  list.unshift({
+    id:"A0001",
+    name:"Kouadio Yao (compte test)",
+    sector:"Bâtiment", metier:"Électricien bâtiment", country:"Côte d'Ivoire", city:"Abidjan",
+    phone:"0700000001", password:"artisan123",
+    rating:"4.6", reviews:18, status:"actif",
+    bio:"Électricien bâtiment basé à Abidjan, plus de 8 ans d'expérience en installation et dépannage électrique.",
+    joined:"2026-01-10"
+  });
+  return list;
+}
+
+/* ============================ ÉTAT ============================ */
+
+function seedTransactions(artisans){
+  const list=[];
+  const methods=["Orange Money","MTN Mobile Money","Moov Money","Wave","Carte bancaire"];
+  const pool=artisans.filter(a=>a.status==="actif");
+  const now=new Date();
+  for(let i=0;i<22;i++){
+    const a=rand(pool);
+    if(!a) continue;
+    const daysAgo=Math.floor(Math.random()*14);
+    const d=new Date(now.getTime()-daysAgo*86400000);
+    list.push({
+      id:"T"+(9000000+i),
+      artisan:a.name, method:rand(methods),
+      payerName:rand(FIRST_NAMES)+" "+rand(LAST_NAMES),
+      payerAccount: rand(methods)==="Carte bancaire" ? "4000 •••• •••• "+(1000+i) : randPhone(),
+      artisanSector:a.sector, artisanMetier:a.metier, artisanCountry:a.country, artisanCity:a.city,
+      amount:2000, date:d.toISOString().slice(0,10)+" "+String(8+Math.floor(Math.random()*10)).padStart(2,"0")+":00"
+    });
+  }
+  return list;
+}
+
+const seededArtisans = seedArtisans();
+
+const state = {
+  view:"home",
+  artisans:seededArtisans,
+  unlockedIds:new Set(),      // contacts déverrouillés (session visiteur courante)
+  transactions:seedTransactions(seededArtisans),            // historique paiements simulés
+  selectedArtisan:null,
+  filterSector:"",
+  filterCountry:"",
+  adminAuthed:false,
+  admin:{ username:"admin", password:"admin123" },
+  currentArtisanId:null,      // artisan connecté à son espace
+  settings:{
+    unlockPrice:2000,
+    currency:"FCFA",
+    numbers:{
+      "Orange Money":"+225 07 00 00 00 00",
+      "MTN Mobile Money":"+225 05 00 00 00 00",
+      "Moov Money":"+225 01 00 00 00 00",
+      "Wave":"+225 07 11 11 11 11",
+      "Carte bancaire":"IBAN CI93 CI001 00001 00000000000 12"
+    }
+  },
+  modal:null // {type:...}
+};
+
+function togglePwd(inputId, btn){
+  const el=document.getElementById(inputId);
+  if(!el) return;
+  const showing = el.type==="text";
+  el.type = showing ? "password" : "text";
+  btn.textContent = showing ? "👁" : "🙈";
+}
+window.togglePwd=togglePwd;
+
+function toast(msg){
+  const root=document.getElementById("toast-root");
+  const el=document.createElement("div");
+  el.className="toast"; el.textContent=msg;
+  root.innerHTML=""; root.appendChild(el);
+  setTimeout(()=>{ if(root.contains(el)) root.removeChild(el); },2600);
+}
+
+/* ============================ NAV ============================ */
+
+function renderNav(){
+  const items=[
+    {v:"home",l:"Marketplace"},
+    {v:"artisan-signup",l:"Devenir ArtisanRescue"},
+    {v: state.currentArtisanId ? "artisan-dashboard" : "artisan-login", l: state.currentArtisanId ? "Mon espace" : "Connexion artisan"},
+    {v:"admin-gate",l:"Admin"},
+  ];
+  document.getElementById("mainnav").innerHTML = items.map(it=>
+    `<button class="navbtn ${state.view===it.v||(it.v==='admin-gate'&&state.view.startsWith('admin'))?'active':''}" onclick="go('${it.v}')">${it.l}</button>`
+  ).join("");
+}
+
+function go(view){
+  state.view=view;
+  if(view==="admin-gate" && state.adminAuthed) state.view="admin-dashboard";
+  if(view==="artisan-login" && state.currentArtisanId) state.view="artisan-dashboard";
+  render();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+window.go=go;
+
+/* ============================ RENDER ROOT ============================ */
+
+function render(){
+  renderNav();
+  const app=document.getElementById("app");
+  if(state.view==="home") app.innerHTML=viewHome();
+  else if(state.view==="artisan-signup") app.innerHTML=viewArtisanSignup();
+  else if(state.view==="artisan-login") app.innerHTML=viewArtisanLogin();
+  else if(state.view==="artisan-dashboard") app.innerHTML=viewArtisanDashboard();
+  else if(state.view==="admin-gate") app.innerHTML=viewAdminGate();
+  else if(state.view==="admin-dashboard") app.innerHTML=viewAdminDashboard();
+  attachHandlers();
+}
+
+/* ============================ HOME / MARKETPLACE ============================ */
+
+function viewHome(){
+  const filtered = state.artisans.filter(a=>
+    a.status==="actif" &&
+    (state.filterSector===""||a.sector===state.filterSector) &&
+    (state.filterCountry===""||a.country===state.filterCountry)
+  );
+  return `
+  <div class="hero">
+    <div class="eyebrow">ArtisanRescue — Marketplace des métiers d'artisanat</div>
+    <h1>Trouvez l'artisan qu'il vous faut. Payez seulement pour être mis en relation.</h1>
+    <p>Parcourez librement tous les artisans inscrits, comparez les notes, puis déverrouillez le contact direct de celui qui vous intéresse pour un petit montant fixé par la plateforme — aucun compte n'est nécessaire pour chercher un artisan.</p>
+    <div class="btnrow">
+      <button class="btn btn-ochre" onclick="go('artisan-signup')">Proposer mon savoir-faire</button>
+      <button class="btn btn-outline" onclick="go('artisan-login')">J'ai déjà un compte artisan</button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <select id="f-sector">
+      <option value="">Tous les secteurs</option>
+      ${SECTORS.map(s=>`<option value="${s}" ${state.filterSector===s?'selected':''}>${s}</option>`).join("")}
+    </select>
+    <select id="f-country">
+      <option value="">Tous les pays</option>
+      ${COUNTRIES.map(c=>`<option value="${c.name}" ${state.filterCountry===c.name?'selected':''}>${c.name}</option>`).join("")}
+    </select>
+  </div>
+
+  <div class="section-head">
+    <div><h2>${filtered.length} artisan${filtered.length>1?'s':''} disponible${filtered.length>1?'s':''}</h2>
+    <p>Contact verrouillé jusqu'au paiement du déverrouillage.</p></div>
+  </div>
+
+  ${filtered.length===0?`<div class="empty">Aucun artisan pour ces filtres.</div>`:`
+  <div class="grid">
+    ${filtered.map(a=>artisanCard(a)).join("")}
+  </div>`}
+  `;
+}
+
+function artisanCard(a){
+  const unlocked = state.unlockedIds.has(a.id);
+  return `
+  <div class="card">
+    <div class="card-top">
+      <div class="avatar">${a.name.split(" ").map(w=>w[0]).slice(0,2).join("")}</div>
+      <span class="badge badge-sector">${a.sector}</span>
+    </div>
+    <h3>${a.name}</h3>
+    <div class="meta">${a.metier} · ${a.city}, ${a.country}</div>
+    <div class="stars">★ ${a.rating} <span style="color:var(--cream-dim)">(${a.reviews} avis)</span></div>
+    <div class="contact-line">
+      ${unlocked
+        ? `<span class="mono">${countryPrefix(a.country)} ${a.phone}</span>`
+        : `<span class="blur-phone mono">${countryPrefix(a.country)} •• •• •• ••</span>`}
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;">
+      <button class="btn btn-outline btn-sm" onclick="openArtisan('${a.id}')">Voir le profil</button>
+      ${unlocked
+        ? `<button class="btn btn-kente btn-sm" disabled>Déverrouillé ✓</button>`
+        : `<button class="btn btn-ochre btn-sm" onclick="openUnlock('${a.id}')">Déverrouiller</button>`}
+    </div>
+  </div>`;
+}
+
+function countryPrefix(name){ const c=COUNTRIES.find(c=>c.name===name); return c?c.prefix:""; }
+
+window.openArtisan=function(id){
+  const a=state.artisans.find(x=>x.id===id);
+  state.modal={type:"profile",artisan:a};
+  renderModal();
+};
+
+window.openUnlock=function(id){
+  const a=state.artisans.find(x=>x.id===id);
+  state.modal={type:"unlock",artisan:a,method:null,step:"choose"};
+  renderModal();
+};
+
+/* ============================ MODALS ============================ */
+
+function renderModal(){
+  const root=document.getElementById("modal-root");
+  if(!state.modal){ root.innerHTML=""; return; }
+  const m=state.modal;
+
+  if(m.type==="profile"){
+    const a=m.artisan;
+    const unlocked=state.unlockedIds.has(a.id);
+    root.innerHTML=`
+    <div class="modal-bg" onclick="closeModalBg(event)">
+      <div class="modal">
+        <button class="close-x" onclick="closeModal()">✕</button>
+        <div class="avatar" style="margin-bottom:10px;width:56px;height:56px;font-size:20px;">${a.name.split(" ").map(w=>w[0]).slice(0,2).join("")}</div>
+        <h2>${a.name}</h2>
+        <div class="sub">${a.metier} · ${a.sector} · ${a.city}, ${a.country}</div>
+        <div class="stars" style="margin-bottom:14px;">★ ${a.rating} (${a.reviews} avis)</div>
+        <p style="font-size:14px;color:var(--cream-dim);line-height:1.6;">${a.bio}</p>
+        <div class="contact-line" style="margin:16px 0;">
+          ${unlocked ? `<span class="mono">${countryPrefix(a.country)} ${a.phone}</span>` : `<span class="blur-phone mono">${countryPrefix(a.country)} •• •• •• ••</span>`}
+        </div>
+        ${unlocked
+          ? `<button class="btn btn-kente" disabled style="width:100%;">Contact déverrouillé ✓</button>`
+          : `<button class="btn btn-ochre" style="width:100%;" onclick="openUnlock('${a.id}')">Déverrouiller le contact — ${state.settings.unlockPrice} ${state.settings.currency}</button>`}
+      </div>
+    </div>`;
+    return;
+  }
+
+  if(m.type==="unlock"){
+    const a=m.artisan;
+    if(m.step==="choose"){
+      root.innerHTML=`
+      <div class="modal-bg" onclick="closeModalBg(event)">
+        <div class="modal">
+          <button class="close-x" onclick="closeModal()">✕</button>
+          <h2>Déverrouiller ${a.name}</h2>
+          <div class="sub">Choisissez un moyen de paiement</div>
+          <div class="price-tag">${state.settings.unlockPrice} ${state.settings.currency}</div>
+          <div class="paymethods">
+            ${Object.keys(state.settings.numbers).map(name=>`
+              <div class="paymethod ${m.method===name?'sel':''}" onclick="selectMethod('${name.replace(/'/g,"\\'")}')">${name}</div>
+            `).join("")}
+          </div>
+          <button class="btn btn-ochre" style="width:100%;margin-top:8px;" ${m.method?'':'disabled'} onclick="goToInfo()">Continuer</button>
+        </div>
+      </div>`;
+      return;
+    }
+    if(m.step==="info"){
+      const isCard = m.method==="Carte bancaire";
+      root.innerHTML=`
+      <div class="modal-bg" onclick="closeModalBg(event)">
+        <div class="modal">
+          <button class="close-x" onclick="closeModal()">✕</button>
+          <h2>Vos coordonnées de paiement</h2>
+          <div class="sub">${isCard?"Renseignez votre carte pour payer par":"Renseignez le numéro à débiter via"} <b>${m.method}</b></div>
+          <div class="field"><label>Nom et prénom du payeur</label><input id="pay-name" placeholder="Votre nom complet"></div>
+          ${isCard ? `
+            <div class="field"><label>Numéro de carte</label><input id="pay-account" placeholder="4000 0000 0000 0000" inputmode="numeric"></div>
+            <div class="field" style="display:flex;gap:10px;">
+              <div style="flex:1;"><label>Expiration</label><input id="pay-exp" placeholder="MM/AA"></div>
+              <div style="flex:1;"><label>CVV</label><input id="pay-cvv" placeholder="123" inputmode="numeric"></div>
+            </div>
+          ` : `
+            <div class="field"><label>Numéro de téléphone (${m.method})</label><input id="pay-account" placeholder="07 00 00 00 00" inputmode="tel"></div>
+          `}
+          <button class="btn btn-ochre" style="width:100%;margin-top:8px;" onclick="goToPay()">Continuer</button>
+        </div>
+      </div>`;
+      return;
+    }
+    if(m.step==="pay"){
+      const isCard = m.method==="Carte bancaire";
+      root.innerHTML=`
+      <div class="modal-bg" onclick="closeModalBg(event)">
+        <div class="modal">
+          <button class="close-x" onclick="closeModal()">✕</button>
+          <h2>Paiement — ${m.method}</h2>
+          <div class="sub">Message envoyé à votre téléphone</div>
+          <div class="panel" style="background:var(--indigo-950);margin-bottom:16px;">
+            <p style="font-size:13.5px;line-height:1.7;margin:0;">
+              Confirmez le paiement de <b class="mono">${state.settings.unlockPrice} ${state.settings.currency}</b>
+              via <b>${m.method}</b> pour déverrouiller le contact de <b>${a.name}</b>.<br><br>
+              Payeur : <span class="mono">${m.payerName||"—"}</span><br>
+              ${isCard?"Carte":"Numéro"} débité(e) : <span class="mono">${m.payerAccount||"—"}</span><br><br>
+              Numéro marchand (destinataire) : <span class="mono">${state.settings.numbers[m.method]||"Compte marchand sécurisé"}</span>
+            </p>
+          </div>
+          <button class="btn btn-kente" style="width:100%;" onclick="confirmPay()">Confirmer et payer</button>
+        </div>
+      </div>`;
+      return;
+    }
+    if(m.step==="done"){
+      root.innerHTML=`
+      <div class="modal-bg" onclick="closeModalBg(event)">
+        <div class="modal" style="text-align:center;">
+          <button class="close-x" onclick="closeModal()">✕</button>
+          <div style="font-size:40px;margin:10px 0;">✅</div>
+          <h2>Contact déverrouillé</h2>
+          <div class="sub">Le paiement a été reçu sur votre page admin.</div>
+          <div class="contact-line" style="justify-content:center;">
+            <span class="mono">${countryPrefix(a.country)} ${a.phone}</span>
+          </div>
+          <button class="btn btn-ochre" style="width:100%;margin-top:18px;" onclick="closeModal()">Fermer</button>
+        </div>
+      </div>`;
+      return;
+    }
+  }
+}
+
+window.selectMethod=function(name){ state.modal.method=name; renderModal(); };
+window.goToInfo=function(){ state.modal.step="info"; renderModal(); };
+window.goToPay=function(){
+  const name=document.getElementById("pay-name").value.trim();
+  const account=document.getElementById("pay-account").value.trim();
+  if(!name||!account){ toast("Merci de renseigner votre nom et votre numéro/carte."); return; }
+  state.modal.payerName=name;
+  state.modal.payerAccount=account;
+  state.modal.step="pay";
+  renderModal();
+};
+window.confirmPay=function(){
+  const a=state.modal.artisan;
+  state.unlockedIds.add(a.id);
+  state.transactions.push({
+    id:"T"+Date.now(), artisan:a.name, method:state.modal.method,
+    payerName:state.modal.payerName, payerAccount:state.modal.payerAccount,
+    artisanSector:a.sector, artisanMetier:a.metier, artisanCountry:a.country, artisanCity:a.city,
+    amount:state.settings.unlockPrice, date:new Date().toISOString().slice(0,16).replace("T"," ")
+  });
+  state.modal.step="done";
+  renderModal();
+  render();
+};
+window.closeModal=function(){ state.modal=null; renderModal(); };
+window.closeModalBg=function(e){ if(e.target.classList.contains("modal-bg")) closeModal(); };
+
+/* ============================ INSCRIPTIONS ============================ */
+
+function viewArtisanSignup(){
+  return `
+  <div class="hero" style="padding-top:36px;">
+    <div class="eyebrow">Espace artisan</div>
+    <h1 style="font-size:32px;">Proposez votre savoir-faire</h1>
+    <p>Créez votre profil, choisissez votre métier et votre secteur. Votre contact reste verrouillé — les clients paient pour le débloquer, vous ne payez rien pour vous inscrire.</p>
+  </div>
+  <div class="panel" style="max-width:520px;">
+    <div class="field"><label>Nom complet</label><input id="ar-name" placeholder="Ex: Kouadio Yao"></div>
+    <div class="field"><label>Secteur</label>
+      <select id="ar-sector" onchange="refreshMetiers()">
+        ${SECTORS.map(s=>`<option value="${s}">${s}</option>`).join("")}
+      </select>
+    </div>
+    <div class="field"><label>Métier précis</label><select id="ar-metier"></select></div>
+    <div class="field"><label>Pays</label>
+      <select id="ar-country">${COUNTRIES.map(c=>`<option value="${c.name}">${c.name} (${c.prefix})</option>`).join("")}</select>
+    </div>
+    <div class="field"><label>Ville</label><input id="ar-city" placeholder="Ex: Abidjan"></div>
+    <div class="field"><label>Téléphone (sert d'identifiant de connexion, restera masqué aux visiteurs)</label><input id="ar-phone" placeholder="07 00 00 00 00"></div>
+    <div class="field"><label>Mot de passe</label>
+      <div class="pw-wrap"><input id="ar-password" type="password" placeholder="Choisissez un mot de passe">
+        <button type="button" class="pw-eye" onclick="togglePwd('ar-password',this)">👁</button></div>
+    </div>
+    <div class="field"><label>Présentation courte</label><textarea id="ar-bio" rows="3" placeholder="Décrivez votre expérience et vos réalisations"></textarea></div>
+    <button class="btn btn-ochre" style="width:100%;" onclick="submitArtisan()">Créer mon profil artisan</button>
+  </div>`;
+}
+
+function refreshMetiers(){
+  const sector=document.getElementById("ar-sector").value;
+  const sel=document.getElementById("ar-metier");
+  sel.innerHTML=(METIERS_BY_SECTOR[sector]||[]).map(m=>`<option value="${m}">${m}</option>`).join("");
+}
+
+window.refreshMetiers=refreshMetiers;
+
+window.submitArtisan=function(){
+  const name=document.getElementById("ar-name").value.trim();
+  const phone=document.getElementById("ar-phone").value.trim();
+  const password=document.getElementById("ar-password").value.trim();
+  if(!name||!phone||!password){ toast("Merci de renseigner le nom, le téléphone et un mot de passe."); return; }
+  if(state.artisans.some(a=>a.phone===phone)){ toast("Un compte existe déjà avec ce numéro. Connectez-vous plutôt."); return; }
+  const sector=document.getElementById("ar-sector").value;
+  const a={
+    id:"A"+Date.now(),
+    name, sector,
+    metier:document.getElementById("ar-metier").value||METIERS_BY_SECTOR[sector][0],
+    country:document.getElementById("ar-country").value,
+    city:document.getElementById("ar-city").value||"—",
+    phone, password, rating:"0.0", reviews:0, status:"actif",
+    bio:document.getElementById("ar-bio").value||"Nouveau membre de la plateforme.",
+    joined:new Date().toISOString().slice(0,10)
+  };
+  state.artisans.unshift(a);
+  state.currentArtisanId=a.id;
+  toast("Profil artisan créé avec succès ! Vous êtes connecté.");
+  go("artisan-dashboard");
+};
+
+/* ============================ CONNEXION & TABLEAU DE BORD ARTISAN ============================ */
+
+function viewArtisanLogin(){
+  return `
+  <div class="hero" style="padding-top:36px;">
+    <div class="eyebrow">Espace artisan</div>
+    <h1 style="font-size:32px;">Connexion à mon espace</h1>
+    <p>Compte de démonstration : téléphone <span class="mono">0700000001</span> / mot de passe <span class="mono">artisan123</span></p>
+  </div>
+  <div class="panel" style="max-width:420px;">
+    <div class="field"><label>Téléphone</label><input id="al-phone" placeholder="07 00 00 00 00"></div>
+    <div class="field"><label>Mot de passe</label>
+      <div class="pw-wrap"><input id="al-password" type="password" placeholder="••••••••">
+        <button type="button" class="pw-eye" onclick="togglePwd('al-password',this)">👁</button></div>
+    </div>
+    <button class="btn btn-ochre" style="width:100%;" onclick="tryArtisanLogin()">Se connecter</button>
+    <div style="text-align:center;margin-top:14px;font-size:13px;color:var(--cream-dim);">
+      Pas encore de compte ? <a href="#" onclick="go('artisan-signup');return false;" style="color:var(--ochre);">S'inscrire</a>
+    </div>
+  </div>`;
+}
+
+window.tryArtisanLogin=function(){
+  const phone=document.getElementById("al-phone").value.trim();
+  const password=document.getElementById("al-password").value.trim();
+  const a=state.artisans.find(x=>x.phone===phone && x.password===password);
+  if(!a){ toast("Téléphone ou mot de passe incorrect."); return; }
+  if(a.status!=="actif"){ toast("Ce compte est suspendu. Contactez l'administrateur."); return; }
+  state.currentArtisanId=a.id;
+  toast("Connexion réussie.");
+  go("artisan-dashboard");
+};
+
+window.artisanLogout=function(){ state.currentArtisanId=null; go("home"); };
+
+function viewArtisanDashboard(){
+  const a=state.artisans.find(x=>x.id===state.currentArtisanId);
+  if(!a){ go("artisan-login"); return ""; }
+  const myUnlocks = state.transactions.filter(t=>t.artisan===a.name).length;
+  return `
+  <div class="section-head" style="margin-top:10px;">
+    <div><h2>Mon espace artisan</h2><p>Connecté en tant que ${a.name}</p></div>
+    <button class="btn btn-outline btn-sm" onclick="artisanLogout()">Se déconnecter</button>
+  </div>
+
+  <div class="statcards">
+    <div class="statcard"><div class="n">★ ${a.rating}</div><div class="l">Note moyenne (${a.reviews} avis)</div></div>
+    <div class="statcard"><div class="n">${myUnlocks}</div><div class="l">Contacts déverrouillés par des clients</div></div>
+    <div class="statcard"><div class="n"><span class="badge ${a.status==='actif'?'badge-active':'badge-suspended'}">${a.status}</span></div><div class="l">Statut du compte</div></div>
+  </div>
+
+  <div class="panel" style="max-width:560px;">
+    <h3>Mes informations & compétences</h3>
+    <div class="sub">Ces informations sont visibles publiquement sur le marketplace (sauf le téléphone, masqué jusqu'au paiement).</div>
+    <div class="field"><label>Nom complet</label><input id="db-name" value="${a.name}"></div>
+    <div class="field"><label>Secteur</label>
+      <select id="db-sector" onchange="refreshDbMetiers()">
+        ${SECTORS.map(s=>`<option value="${s}" ${s===a.sector?'selected':''}>${s}</option>`).join("")}
+      </select>
+    </div>
+    <div class="field"><label>Métier précis</label><select id="db-metier"></select></div>
+    <div class="field"><label>Pays</label>
+      <select id="db-country">${COUNTRIES.map(c=>`<option value="${c.name}" ${c.name===a.country?'selected':''}>${c.name} (${c.prefix})</option>`).join("")}</select>
+    </div>
+    <div class="field"><label>Ville</label><input id="db-city" value="${a.city}"></div>
+    <div class="field"><label>Téléphone</label><input id="db-phone" value="${a.phone}"></div>
+    <div class="field"><label>Présentation / savoir-faire proposé</label><textarea id="db-bio" rows="4">${a.bio}</textarea></div>
+    <button class="btn btn-ochre" style="width:100%;" onclick="saveArtisanProfile()">Enregistrer les modifications</button>
+  </div>`;
+}
+
+function refreshDbMetiers(){
+  const sector=document.getElementById("db-sector").value;
+  const a=state.artisans.find(x=>x.id===state.currentArtisanId);
+  const sel=document.getElementById("db-metier");
+  sel.innerHTML=(METIERS_BY_SECTOR[sector]||[]).map(m=>`<option value="${m}" ${a&&m===a.metier?'selected':''}>${m}</option>`).join("");
+}
+window.refreshDbMetiers=refreshDbMetiers;
+
+window.saveArtisanProfile=function(){
+  const a=state.artisans.find(x=>x.id===state.currentArtisanId);
+  if(!a) return;
+  a.name=document.getElementById("db-name").value.trim()||a.name;
+  a.sector=document.getElementById("db-sector").value;
+  a.metier=document.getElementById("db-metier").value||a.metier;
+  a.country=document.getElementById("db-country").value;
+  a.city=document.getElementById("db-city").value||a.city;
+  a.phone=document.getElementById("db-phone").value||a.phone;
+  a.bio=document.getElementById("db-bio").value||a.bio;
+  toast("Profil mis à jour.");
+  render();
+};
+
+/* ============================ EXPORT CSV / EXCEL ============================ */
+
+function downloadBlob(content, filename, mime){
+  const blob=new Blob([content], {type:mime});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.href=url; link.download=filename;
+  document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function toCSV(headers, rows){
+  const esc = v => `"${String(v??"").replace(/"/g,'""')}"`;
+  const lines=[headers.map(esc).join(";")];
+  rows.forEach(r=>lines.push(r.map(esc).join(";")));
+  return "\uFEFF" + lines.join("\r\n"); // BOM pour Excel/accents
+}
+
+function exportCSV(headers, rows, filename){
+  downloadBlob(toCSV(headers, rows), filename, "text/csv;charset=utf-8;");
+  toast("Export CSV téléchargé.");
+}
+
+function exportXLSX(headers, rows, filename, sheetName){
+  if(typeof XLSX==="undefined"){ toast("La librairie Excel n'a pas pu se charger (connexion réseau)."); return; }
+  const data=[headers, ...rows];
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName||"Données");
+  XLSX.writeFile(wb, filename);
+  toast("Export Excel téléchargé.");
+}
+
+function artisansRows(){
+  return state.artisans.map(a=>{
+    const [lat,lng]=getCoords(a.country,a.city);
+    return [a.sector, a.country, a.city, a.name, countryPrefix(a.country)+" "+a.phone, a.metier, a.bio, lat, lng, a.rating, a.reviews, a.status];
+  });
+}
+const ARTISANS_HEADERS=["Secteur","Pays","Ville","Nom","Téléphone","Métier précis","Présentation courte","Latitude","Longitude","Note","Avis","Statut"];
+
+window.exportArtisansCSV=function(){ exportCSV(ARTISANS_HEADERS, artisansRows(), "artisanrescue-artisans.csv"); };
+window.exportArtisansXLSX=function(){ exportXLSX(ARTISANS_HEADERS, artisansRows(), "artisanrescue-artisans.xlsx", "Artisans"); };
+
+function clientsRows(){
+  return state.transactions.map(t=>{
+    const [lat,lng]=getCoords(t.artisanCountry,t.artisanCity);
+    return [t.payerName, t.method, t.payerAccount, t.artisan, t.artisanCountry, t.artisanCity, lat, lng, t.artisanSector, t.artisanMetier, t.amount, t.date];
+  });
+}
+const CLIENTS_HEADERS=["Nom client","Moyen de paiement","Numéro de paiement","Artisan sollicité","Pays","Ville","Latitude","Longitude","Secteur","Métier","Montant","Date"];
+
+window.exportClientsCSV=function(){ exportCSV(CLIENTS_HEADERS, clientsRows(), "artisanrescue-clients-marketplace.csv"); };
+window.exportClientsXLSX=function(){ exportXLSX(CLIENTS_HEADERS, clientsRows(), "artisanrescue-clients-marketplace.xlsx", "Clients marketplace"); };
+
+window.exportFullDatabaseXLSX=function(){
+  if(typeof XLSX==="undefined"){ toast("La librairie Excel n'a pas pu se charger (connexion réseau)."); return; }
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([ARTISANS_HEADERS, ...artisansRows()]), "Artisans");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([CLIENTS_HEADERS, ...clientsRows()]), "Clients marketplace");
+  const villesHeaders=["Ville","Pays","Latitude","Longitude","Nb artisans"];
+  const villesMap={};
+  state.artisans.forEach(a=>{ const k=a.city+"|"+a.country; villesMap[k]=(villesMap[k]||0)+1; });
+  const villesRows=Object.keys(villesMap).map(k=>{
+    const [city,country]=k.split("|"); const [lat,lng]=getCoords(country,city);
+    return [city,country,lat,lng,villesMap[k]];
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([villesHeaders, ...villesRows]), "Villes");
+  XLSX.writeFile(wb, "artisanrescue-base-complete.xlsx");
+  toast("Base complète téléchargée (3 onglets, prête pour TCD).");
+};
+
+/* ============================ ADMIN ============================ */
+
+function viewAdminGate(){
+  return `
+  <div class="hero" style="padding-top:56px;">
+    <div class="eyebrow">Back-office</div>
+    <h1 style="font-size:32px;">Connexion administrateur</h1>
+    <p>Identifiants par défaut : <span class="mono">admin / admin123</span> — à modifier après connexion.</p>
+  </div>
+  <div class="panel" style="max-width:420px;">
+    <div class="field"><label>Identifiant</label><input id="adm-user" placeholder="admin"></div>
+    <div class="field"><label>Mot de passe</label>
+      <div class="pw-wrap"><input id="adm-pass" type="password" placeholder="••••••••">
+        <button type="button" class="pw-eye" onclick="togglePwd('adm-pass',this)">👁</button></div>
+    </div>
+    <button class="btn btn-ochre" style="width:100%;" onclick="tryAdminLogin()">Se connecter</button>
+  </div>`;
+}
+
+window.tryAdminLogin=function(){
+  const u=document.getElementById("adm-user").value.trim();
+  const p=document.getElementById("adm-pass").value.trim();
+  if(u===state.admin.username && p===state.admin.password){
+    state.adminAuthed=true;
+    toast("Connexion réussie.");
+    go("admin-dashboard");
+  } else {
+    toast("Identifiants incorrects.");
+  }
+};
+
+let adminTab="overview";
+window.setAdminTab=function(t){ adminTab=t; render(); };
+
+function viewAdminDashboard(){
+  const tabs=[
+    ["overview","Vue d'ensemble"],["analytics","Analyses"],["stats","Statistiques"],["map","Cartographie"],
+    ["artisans","Comptes artisans"],["settings","Paramètres"]
+  ];
+  return `
+  <div class="section-head" style="margin-top:10px;">
+    <div><h2>Back-office administrateur</h2><p>Connecté en tant que ${state.admin.username}</p></div>
+    <button class="btn btn-outline btn-sm" onclick="adminLogout()">Se déconnecter</button>
+  </div>
+  <div class="filters">
+    ${tabs.map(([k,l])=>`<button class="navbtn ${adminTab===k?'active':''}" onclick="setAdminTab('${k}')">${l}</button>`).join("")}
+  </div>
+  <div id="admin-body">${renderAdminTab()}</div>
+  `;
+}
+
+window.adminLogout=function(){ state.adminAuthed=false; go("home"); };
+
+function renderAdminTab(){
+  if(adminTab==="overview") return adminOverview();
+  if(adminTab==="analytics") return adminAnalytics();
+  if(adminTab==="stats") return adminStats();
+  if(adminTab==="map") return adminMap();
+  if(adminTab==="artisans") return adminArtisansTable();
+  if(adminTab==="settings") return adminSettings();
+}
+
+function adminAnalytics(){
+  const revenue = state.transactions.reduce((s,t)=>s+t.amount,0);
+  const nbTx = state.transactions.length;
+  const avgTicket = nbTx ? Math.round(revenue/nbTx) : 0;
+  const activeArtisans = state.artisans.filter(a=>a.status==="actif").length;
+  const conversionPerArtisan = activeArtisans ? (nbTx/activeArtisans).toFixed(2) : "0";
+  const avgRating = state.artisans.length ? (state.artisans.reduce((s,a)=>s+parseFloat(a.rating||0),0)/state.artisans.length).toFixed(2) : "0";
+
+  return `
+  <div class="kpi-row">
+    <div class="kpi"><div class="n mono">${revenue.toLocaleString()} ${state.settings.currency}</div><div class="l">Revenu total simulé</div></div>
+    <div class="kpi"><div class="n mono">${avgTicket.toLocaleString()} ${state.settings.currency}</div><div class="l">Panier moyen par déverrouillage</div></div>
+    <div class="kpi"><div class="n mono">${conversionPerArtisan}</div><div class="l">Déverrouillages par artisan actif</div></div>
+    <div class="kpi"><div class="n mono">★ ${avgRating}</div><div class="l">Note moyenne de la plateforme</div></div>
+  </div>
+
+  <div class="two-col" style="margin-top:20px;">
+    <div class="panel">
+      <h3>Revenu dans le temps</h3>
+      <div class="sub">Somme des déverrouillages payés, par jour</div>
+      <div class="chart-box"><canvas id="chart-revenue"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3>Répartition des comptes</h3>
+      <div class="sub">Artisans actifs vs suspendus</div>
+      <div class="chart-box"><canvas id="chart-status"></canvas></div>
+    </div>
+  </div>
+
+  <div class="two-col" style="margin-top:20px;">
+    <div class="panel">
+      <h3>Revenu par secteur</h3>
+      <div class="sub">Quels métiers génèrent le plus de mises en relation payées</div>
+      <div class="chart-box"><canvas id="chart-revenue-sector"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3>Revenu par pays</h3>
+      <div class="sub">Répartition géographique du chiffre d'affaires</div>
+      <div class="chart-box"><canvas id="chart-revenue-country"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <h3>Top 5 des artisans les plus sollicités</h3>
+    <div class="sub">Classement par nombre de contacts déverrouillés par des clients</div>
+    <div class="chart-box" style="height:220px;"><canvas id="chart-top-artisans"></canvas></div>
+  </div>
+  `;
+}
+
+function initAnalyticsCharts(){
+  if(typeof Chart==="undefined"){ return; }
+  const gridColor="rgba(245,239,227,0.08)";
+  const textColor="#cfc6b3";
+  Chart.defaults.color=textColor;
+  Chart.defaults.font.family="Inter";
+
+  // --- Revenu dans le temps (par jour) ---
+  const byDay={};
+  state.transactions.forEach(t=>{ const d=t.date.slice(0,10); byDay[d]=(byDay[d]||0)+t.amount; });
+  const days=Object.keys(byDay).sort();
+  new Chart(document.getElementById("chart-revenue"), {
+    type:"line",
+    data:{ labels:days, datasets:[{ label:"Revenu ("+state.settings.currency+")", data:days.map(d=>byDay[d]),
+      borderColor:"#e8a33d", backgroundColor:"rgba(232,163,61,0.15)", fill:true, tension:0.3 }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ x:{grid:{color:gridColor}}, y:{grid:{color:gridColor}, beginAtZero:true} },
+      plugins:{ legend:{display:false} } }
+  });
+
+  // --- Statut des comptes (donut) ---
+  const statusCounts=groupCount(state.artisans,"status");
+  new Chart(document.getElementById("chart-status"), {
+    type:"doughnut",
+    data:{ labels:statusCounts.map(s=>s[0]), datasets:[{ data:statusCounts.map(s=>s[1]),
+      backgroundColor:["#3c7a5d","#c1502e","#324a7d"] }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:"bottom"} } }
+  });
+
+  // --- Revenu par secteur ---
+  const bySector={};
+  state.transactions.forEach(t=>{ bySector[t.artisanSector]=(bySector[t.artisanSector]||0)+t.amount; });
+  const sectorLabels=Object.keys(bySector).sort((a,b)=>bySector[b]-bySector[a]);
+  new Chart(document.getElementById("chart-revenue-sector"), {
+    type:"bar",
+    data:{ labels:sectorLabels, datasets:[{ label:"Revenu", data:sectorLabels.map(s=>bySector[s]), backgroundColor:"#c1502e" }]},
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:"y",
+      scales:{ x:{grid:{color:gridColor}, beginAtZero:true}, y:{grid:{display:false}} },
+      plugins:{ legend:{display:false} } }
+  });
+
+  // --- Revenu par pays ---
+  const byCountry={};
+  state.transactions.forEach(t=>{ byCountry[t.artisanCountry]=(byCountry[t.artisanCountry]||0)+t.amount; });
+  const countryLabels=Object.keys(byCountry).sort((a,b)=>byCountry[b]-byCountry[a]);
+  new Chart(document.getElementById("chart-revenue-country"), {
+    type:"bar",
+    data:{ labels:countryLabels, datasets:[{ label:"Revenu", data:countryLabels.map(c=>byCountry[c]), backgroundColor:"#e8a33d" }]},
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:"y",
+      scales:{ x:{grid:{color:gridColor}, beginAtZero:true}, y:{grid:{display:false}} },
+      plugins:{ legend:{display:false} } }
+  });
+
+  // --- Top 5 artisans sollicités ---
+  const byArtisan={};
+  state.transactions.forEach(t=>{ byArtisan[t.artisan]=(byArtisan[t.artisan]||0)+1; });
+  const topArtisans=Object.entries(byArtisan).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  new Chart(document.getElementById("chart-top-artisans"), {
+    type:"bar",
+    data:{ labels:topArtisans.map(x=>x[0]), datasets:[{ label:"Déverrouillages", data:topArtisans.map(x=>x[1]), backgroundColor:"#3c7a5d" }]},
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:"y",
+      scales:{ x:{grid:{color:gridColor}, beginAtZero:true, ticks:{precision:0}}, y:{grid:{display:false}} },
+      plugins:{ legend:{display:false} } }
+  });
+}
+
+function adminOverview(){
+  const revenue = state.transactions.reduce((s,t)=>s+t.amount,0);
+  const actifs = state.artisans.filter(a=>a.status==="actif").length;
+  return `
+  <div class="panel" style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div><h3 style="margin:0;">Base de données complète</h3>
+    <div class="sub" style="margin-top:2px;">Un seul fichier Excel avec 3 onglets (Artisans, Clients marketplace, Villes) — prêt pour construire des tableaux croisés dynamiques.</div></div>
+    <button class="btn btn-kente" onclick="exportFullDatabaseXLSX()">⬇ Télécharger la base complète (.xlsx)</button>
+  </div>
+  <div class="statcards">
+    <div class="statcard"><div class="n">${state.artisans.length}</div><div class="l">Artisans inscrits</div></div>
+    <div class="statcard"><div class="n">${actifs}</div><div class="l">Artisans actifs sur le marketplace</div></div>
+    <div class="statcard"><div class="n">${state.transactions.length}</div><div class="l">Déverrouillages payés</div></div>
+    <div class="statcard"><div class="n mono">${revenue.toLocaleString()}</div><div class="l">Revenus simulés (${state.settings.currency})</div></div>
+  </div>
+  <div class="panel">
+    <div class="section-head" style="margin:0 0 4px;">
+      <div><h3 style="margin:0;">Base des clients du marketplace</h3>
+      <div class="sub" style="margin-top:2px;">Chaque déverrouillage de contact par un visiteur, quel que soit le moyen de paiement. Simulation — à brancher sur un vrai fournisseur de paiement en production.</div></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="exportClientsCSV()">⬇ CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportClientsXLSX()">⬇ Excel</button>
+      </div>
+    </div>
+    ${state.transactions.length===0?`<div class="empty">Aucune transaction pour l'instant.</div>`:`
+    <div class="table-wrap"><table>
+      <tr><th>Réf.</th><th>Artisan</th><th>Payeur</th><th>Moyen</th><th>Montant</th><th>Date</th></tr>
+      ${state.transactions.slice().reverse().map(t=>`<tr>
+        <td class="mono">${t.id}</td><td>${t.artisan}</td><td>${t.payerName||"—"}<br><span class="mono" style="color:var(--cream-dim);font-size:11.5px;">${t.payerAccount||""}</span></td><td>${t.method}</td>
+        <td class="mono">${t.amount.toLocaleString()} ${state.settings.currency}</td><td>${t.date}</td>
+      </tr>`).join("")}
+    </table></div>`}
+  </div>`;
+}
+
+function groupCount(list,key){
+  const m={};
+  list.forEach(x=>{ m[x[key]]=(m[x[key]]||0)+1; });
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+}
+
+function barList(pairs){
+  const max=Math.max(...pairs.map(p=>p[1]),1);
+  return `<div class="barlist">${pairs.map(([label,count])=>`
+    <div class="barrow">
+      <div>${label}</div>
+      <div class="bartrack"><div class="barfill" style="width:${(count/max*100).toFixed(0)}%"></div></div>
+      <div class="mono" style="text-align:right;">${count}</div>
+    </div>`).join("")}</div>`;
+}
+
+function adminStats(){
+  const byCountry=groupCount(state.artisans,"country");
+  const bySector=groupCount(state.artisans,"sector");
+  const byStatus=groupCount(state.artisans,"status");
+  return `
+  <div class="two-col">
+    <div class="panel"><h3>Artisans par pays</h3><div class="sub">Répartition des inscriptions</div>${barList(byCountry)}</div>
+    <div class="panel"><h3>Artisans par secteur</h3><div class="sub">Répartition des métiers</div>${barList(bySector)}</div>
+  </div>
+  <div class="panel" style="margin-top:20px;">
+    <h3>Répartition par statut de compte</h3><div class="sub">Actifs vs suspendus</div>${barList(byStatus)}
+  </div>`;
+}
+
+function adminMap(){
+  const allByCountry={};
+  state.artisans.forEach(a=>{
+    allByCountry[a.country]=allByCountry[a.country]||{artisans:0,cities:new Set()};
+    allByCountry[a.country].artisans++; allByCountry[a.country].cities.add(a.city);
+  });
+  const rows=Object.entries(allByCountry).sort((a,b)=>b[1].artisans-a[1].artisans);
+  const cityRows=[];
+  state.artisans.forEach(a=>{ cityRows.push(a.city+"|"+a.country); });
+  const uniqueCities=[...new Set(cityRows)].map(k=>{
+    const [city,country]=k.split("|");
+    const [lat,lng]=getCoords(country,city);
+    const count=state.artisans.filter(a=>a.city===city&&a.country===country).length;
+    return {city,country,lat,lng,count};
+  }).sort((a,b)=>b.count-a.count);
+  return `
+  <div class="panel">
+    <h3>Cartographie des lieux d'enregistrement — par pays</h3>
+    <div class="sub">Vue tabulaire par pays et ville — pour une carte géographique interactive (pins sur le globe), il faudra brancher une API cartographique (Google Maps / Mapbox) côté serveur.</div>
+    <div class="table-wrap"><table>
+      <tr><th>Pays</th><th>Villes actives</th><th>Artisans inscrits</th></tr>
+      ${rows.map(([country,d])=>`<tr>
+        <td>${country} <span class="mono" style="color:var(--cream-dim)">${countryPrefix(country)}</span></td>
+        <td>${[...d.cities].join(", ")}</td>
+        <td class="mono">${d.artisans}</td>
+      </tr>`).join("")}
+    </table></div>
+  </div>
+  <div class="panel" style="margin-top:20px;">
+    <h3>Coordonnées géographiques par ville d'enregistrement</h3>
+    <div class="sub">Latitude / longitude approximatives, exploitables dans un outil cartographique externe (Google Maps, Mapbox, Excel Cartes).</div>
+    <div class="table-wrap"><table>
+      <tr><th>Ville</th><th>Pays</th><th>Latitude</th><th>Longitude</th><th>Artisans</th></tr>
+      ${uniqueCities.map(r=>`<tr>
+        <td>${r.city}</td><td>${r.country}</td>
+        <td class="mono">${r.lat}</td><td class="mono">${r.lng}</td>
+        <td class="mono">${r.count}</td>
+      </tr>`).join("")}
+    </table></div>
+  </div>`;
+}
+
+function adminArtisansTable(){
+  return `
+  <div class="section-head" style="margin:0 0 14px;">
+    <div><h3 style="margin:0;">Base des artisans</h3><div class="sub" style="margin-top:2px;">Secteur, pays, ville, nom, téléphone, métier précis, présentation.</div></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline btn-sm" onclick="exportArtisansCSV()">⬇ CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="exportArtisansXLSX()">⬇ Excel</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Nom</th><th>Métier</th><th>Pays / Ville</th><th>Téléphone</th><th>Note</th><th>Statut</th><th>Actions</th></tr>
+    ${state.artisans.map(a=>`
+    <tr>
+      <td>${a.name}</td>
+      <td>${a.metier}</td>
+      <td>${a.city}, ${a.country}</td>
+      <td class="mono">${countryPrefix(a.country)} ${a.phone}</td>
+      <td>★ ${a.rating} <span style="color:var(--cream-dim);font-size:11.5px;">(${a.reviews})</span></td>
+      <td><span class="badge ${a.status==='actif'?'badge-active':'badge-suspended'}">${a.status}</span></td>
+      <td>
+        <button class="btn btn-sm btn-outline" onclick="toggleArtisanStatus('${a.id}')">${a.status==='actif'?'Suspendre':'Réactiver'}</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteArtisan('${a.id}')">Supprimer</button>
+      </td>
+    </tr>`).join("")}
+  </table>
+  </div>`;
+}
+
+window.toggleArtisanStatus=function(id){
+  const a=state.artisans.find(x=>x.id===id);
+  a.status = a.status==="actif" ? "suspendu" : "actif";
+  toast(a.status==="actif" ? "Artisan réactivé." : "Artisan suspendu.");
+  render();
+};
+window.deleteArtisan=function(id){
+  state.artisans=state.artisans.filter(x=>x.id!==id);
+  toast("Compte artisan supprimé.");
+  render();
+};
+
+function adminSettings(){
+  return `
+  <div class="settings-grid">
+    <div class="panel">
+      <h3>Prix de déverrouillage</h3>
+      <div class="sub">Montant demandé au client pour débloquer un contact artisan.</div>
+      <div class="field"><label>Montant</label><input id="set-price" type="number" value="${state.settings.unlockPrice}"></div>
+      <div class="field"><label>Devise</label><input id="set-currency" value="${state.settings.currency}"></div>
+      <button class="btn btn-ochre" onclick="saveUnlockPrice()">Enregistrer</button>
+    </div>
+
+    <div class="panel">
+      <h3>Numéros de réception des paiements</h3>
+      <div class="sub">Numéros où vous recevez l'argent des déverrouillages.</div>
+      ${Object.keys(state.settings.numbers).map(name=>`
+        <div class="field"><label>${name}</label><input id="num-${cssId(name)}" value="${state.settings.numbers[name]}"></div>
+      `).join("")}
+      <button class="btn btn-ochre" onclick="saveNumbers()">Enregistrer les numéros</button>
+    </div>
+
+    <div class="panel">
+      <h3>Mot de passe admin</h3>
+      <div class="sub">Identifiant actuel : <span class="mono">${state.admin.username}</span></div>
+      <div class="field"><label>Nouvel identifiant</label><input id="set-user" value="${state.admin.username}"></div>
+      <div class="field"><label>Nouveau mot de passe</label>
+        <div class="pw-wrap"><input id="set-pass" type="password" placeholder="Laisser vide pour ne pas changer">
+          <button type="button" class="pw-eye" onclick="togglePwd('set-pass',this)">👁</button></div>
+      </div>
+      <button class="btn btn-ochre" onclick="saveAdminCreds()">Mettre à jour</button>
+    </div>
+
+    <div class="panel">
+      <h3>Pays & indicatifs disponibles</h3>
+      <div class="sub">Liste des pays utilisables à l'inscription (extensible à l'international).</div>
+      <div class="pill-row">
+        ${COUNTRIES.map(c=>`<span class="pill">${c.name} · ${c.prefix}</span>`).join("")}
+      </div>
+    </div>
+  </div>`;
+}
+
+function cssId(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-');}
+
+window.saveUnlockPrice=function(){
+  state.settings.unlockPrice=Number(document.getElementById("set-price").value)||state.settings.unlockPrice;
+  state.settings.currency=document.getElementById("set-currency").value||state.settings.currency;
+  toast("Prix de déverrouillage mis à jour.");
+  render();
+};
+window.saveNumbers=function(){
+  Object.keys(state.settings.numbers).forEach(name=>{
+    const el=document.getElementById("num-"+cssId(name));
+    if(el) state.settings.numbers[name]=el.value;
+  });
+  toast("Numéros de paiement mis à jour.");
+  render();
+};
+window.saveAdminCreds=function(){
+  const u=document.getElementById("set-user").value.trim();
+  const p=document.getElementById("set-pass").value.trim();
+  if(u) state.admin.username=u;
+  if(p) state.admin.password=p;
+  toast("Identifiants administrateur mis à jour.");
+  render();
+};
+
+/* ============================ HANDLERS FILTRES HOME ============================ */
+
+function attachHandlers(){
+  const fs=document.getElementById("f-sector");
+  const fc=document.getElementById("f-country");
+  if(fs) fs.onchange=()=>{ state.filterSector=fs.value; render(); };
+  if(fc) fc.onchange=()=>{ state.filterCountry=fc.value; render(); };
+  if(document.getElementById("ar-sector")) refreshMetiers();
+  if(document.getElementById("db-sector")) refreshDbMetiers();
+  if(state.view==="admin-dashboard" && adminTab==="analytics") initAnalyticsCharts();
+}
+
+/* ============================ INIT ============================ */
+render();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  });
+}
+
+// Bouton "Installer l'application" (Android / Chrome desktop)
+let deferredInstallPrompt=null;
+window.addEventListener("beforeinstallprompt",(e)=>{
+  e.preventDefault();
+  deferredInstallPrompt=e;
+  const btn=document.getElementById("install-app-btn");
+  if(btn) btn.style.display="inline-flex";
+});
+window.installApp=function(){
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.finally(()=>{
+    deferredInstallPrompt=null;
+    const btn=document.getElementById("install-app-btn");
+    if(btn) btn.style.display="none";
+  });
+};
+
+</script>
+</body>
+</html>
