@@ -186,6 +186,12 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .kpi .d{font-size:11px;margin-top:4px;font-weight:600;}
 .kpi .d.up{color:var(--kente);}
 .kpi .d.down{color:var(--terracotta);}
+.star-select{display:flex;gap:6px;font-size:30px;margin:10px 0 4px;cursor:pointer;}
+.star-select span{color:var(--line);transition:.1s;}
+.star-select span.on{color:var(--ochre);}
+.review-item{border-bottom:1px solid var(--line);padding:12px 0;font-size:13.5px;}
+.review-item:last-child{border-bottom:none;}
+.review-item .rh{display:flex;justify-content:space-between;color:var(--cream-dim);font-size:12px;margin-bottom:4px;}
 
 .two-col{display:grid;grid-template-columns:1.1fr 0.9fr;gap:20px;}
 @media(max-width:820px){.two-col{grid-template-columns:1fr;}}
@@ -220,6 +226,18 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 </div>
 
 <div class="wrap" id="app"></div>
+
+<footer style="border-top:1px solid var(--line);margin-top:60px;">
+  <div class="wrap" style="padding-top:26px;padding-bottom:26px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;align-items:center;">
+    <div style="font-size:12.5px;color:var(--cream-dim);">© 2026 ArtisanRescue — Mise en relation avec des artisans qualifiés.</div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;">
+      <a href="#" onclick="goLegal('mentions');return false;" style="font-size:12.5px;color:var(--cream-dim);">Mentions légales</a>
+      <a href="#" onclick="goLegal('cgu');return false;" style="font-size:12.5px;color:var(--cream-dim);">Conditions d'utilisation</a>
+      <a href="#" onclick="goLegal('confidentialite');return false;" style="font-size:12.5px;color:var(--cream-dim);">Confidentialité</a>
+      <a href="#" onclick="goLegal('contact');return false;" style="font-size:12.5px;color:var(--cream-dim);">Contact</a>
+    </div>
+  </div>
+</footer>
 <div id="modal-root"></div>
 <div id="toast-root"></div>
 
@@ -416,8 +434,10 @@ const state = {
   artisans:seededArtisans,
   unlockedIds:new Set(),      // contacts déverrouillés (session visiteur courante)
   transactions:seedTransactions(seededArtisans),            // historique paiements simulés
+  reviews:[],                 // avis clients { artisanId, artisanName, rating, comment, payerName, date }
   selectedArtisan:null,
   filterSector:"",
+  searchQuery:"",
   filterCountry:"",
   adminAuthed:false,
   admin:{ username:"admin", password:"admin123" },
@@ -476,6 +496,58 @@ function go(view){
 }
 window.go=go;
 
+let legalTab="mentions";
+window.goLegal=function(tab){ legalTab=tab; state.view="legal"; render(); window.scrollTo({top:0,behavior:"smooth"}); };
+
+function viewLegal(){
+  const tabs=[["mentions","Mentions légales"],["cgu","Conditions d'utilisation"],["confidentialite","Confidentialité"],["contact","Contact"]];
+  const content={
+    mentions:`
+      <h3>Éditeur de la plateforme</h3>
+      <p>ArtisanRescue est une plateforme de mise en relation entre particuliers/professionnels et artisans indépendants. Elle n'est ni employeur, ni mandataire, ni garant des artisans référencés.</p>
+      <h3>Hébergement</h3>
+      <p>Ce site est hébergé via GitHub Pages (GitHub Inc.).</p>
+      <h3>Responsabilité</h3>
+      <p>ArtisanRescue met en relation les visiteurs avec des artisans qui créent et gèrent librement leur profil. La plateforme ne vérifie pas systématiquement les qualifications déclarées et n'est pas partie aux prestations conclues entre un client et un artisan.</p>
+    `,
+    cgu:`
+      <h3>Objet</h3>
+      <p>La plateforme permet à des artisans de créer un profil présentant leur savoir-faire, et à tout visiteur de consulter ces profils et de payer un montant fixé par la plateforme pour obtenir les coordonnées de contact d'un artisan.</p>
+      <h3>Inscription des artisans</h3>
+      <p>Chaque artisan est responsable de l'exactitude des informations publiées sur son profil (métier, zone d'intervention, présentation). La plateforme se réserve le droit de suspendre ou supprimer un compte en cas de note récurrente insuffisante, de signalement, ou de non-respect des présentes conditions.</p>
+      <h3>Paiement du déverrouillage</h3>
+      <p>Le montant du déverrouillage est fixé par la plateforme et peut évoluer. Ce paiement rémunère uniquement l'accès aux coordonnées de contact — il ne constitue ni un acompte, ni une garantie sur la prestation réalisée ensuite entre le client et l'artisan.</p>
+      <h3>Avis et notation</h3>
+      <p>Les avis sont laissés librement par les visiteurs ayant déverrouillé un contact. Ils doivent rester factuels et respectueux ; la plateforme peut retirer un avis manifestement abusif.</p>
+    `,
+    confidentialite:`
+      <h3>Données collectées</h3>
+      <p>Lors de l'inscription d'un artisan : nom, téléphone, secteur, métier, ville, pays, présentation. Lors d'un déverrouillage : nom du payeur et moyen de paiement utilisé.</p>
+      <h3>Utilisation</h3>
+      <p>Ces données servent uniquement au fonctionnement de la mise en relation (affichage du profil, gestion du paiement, statistiques internes) et ne sont pas revendues à des tiers.</p>
+      <h3>Sécurité des paiements</h3>
+      <p>Les informations de paiement transitent vers les opérateurs Mobile Money ou bancaires concernés ; la plateforme ne conserve pas les données bancaires complètes en clair en environnement de production.</p>
+      <h3>Droits</h3>
+      <p>Tout artisan ou client peut demander la suppression de son compte et de ses données en contactant l'administrateur de la plateforme.</p>
+    `,
+    contact:`
+      <h3>Nous contacter</h3>
+      <p>Pour toute question, réclamation, ou demande de suppression de données, contactez l'administrateur de la plateforme via les coordonnées communiquées lors de votre inscription, ou via le numéro de support affiché sur la page d'accueil.</p>
+    `
+  };
+  return `
+  <div class="hero" style="padding-top:36px;padding-bottom:10px;">
+    <div class="eyebrow">Informations légales</div>
+    <h1 style="font-size:30px;">${tabs.find(t=>t[0]===legalTab)[1]}</h1>
+  </div>
+  <div class="filters">
+    ${tabs.map(([k,l])=>`<button class="navbtn ${legalTab===k?'active':''}" onclick="goLegal('${k}')">${l}</button>`).join("")}
+  </div>
+  <div class="panel" style="max-width:720px;line-height:1.7;font-size:14px;color:var(--cream-dim);">
+    ${content[legalTab]}
+  </div>`;
+}
+
 /* ============================ RENDER ROOT ============================ */
 
 function render(){
@@ -487,16 +559,19 @@ function render(){
   else if(state.view==="artisan-dashboard") app.innerHTML=viewArtisanDashboard();
   else if(state.view==="admin-gate") app.innerHTML=viewAdminGate();
   else if(state.view==="admin-dashboard") app.innerHTML=viewAdminDashboard();
+  else if(state.view==="legal") app.innerHTML=viewLegal();
   attachHandlers();
 }
 
 /* ============================ HOME / MARKETPLACE ============================ */
 
 function viewHome(){
+  const q=(state.searchQuery||"").trim().toLowerCase();
   const filtered = state.artisans.filter(a=>
     a.status==="actif" &&
     (state.filterSector===""||a.sector===state.filterSector) &&
-    (state.filterCountry===""||a.country===state.filterCountry)
+    (state.filterCountry===""||a.country===state.filterCountry) &&
+    (q===""|| (a.name+" "+a.metier+" "+a.sector+" "+a.city+" "+a.bio).toLowerCase().includes(q))
   );
   return `
   <div class="hero">
@@ -510,6 +585,7 @@ function viewHome(){
   </div>
 
   <div class="filters">
+    <input id="f-search" placeholder="🔎 Rechercher un nom, un métier, une ville..." value="${state.searchQuery||''}" style="flex:1;min-width:220px;">
     <select id="f-sector">
       <option value="">Tous les secteurs</option>
       ${SECTORS.map(s=>`<option value="${s}" ${state.filterSector===s?'selected':''}>${s}</option>`).join("")}
@@ -594,7 +670,8 @@ function renderModal(){
           ${unlocked ? `<span class="mono">${countryPrefix(a.country)} ${a.phone}</span>` : `<span class="blur-phone mono">${countryPrefix(a.country)} •• •• •• ••</span>`}
         </div>
         ${unlocked
-          ? `<button class="btn btn-kente" disabled style="width:100%;">Contact déverrouillé ✓</button>`
+          ? `<button class="btn btn-kente" disabled style="width:100%;">Contact déverrouillé ✓</button>
+             <button class="btn btn-outline" style="width:100%;margin-top:10px;" onclick="openReview('${a.id}')">★ Laisser un avis</button>`
           : `<button class="btn btn-ochre" style="width:100%;" onclick="openUnlock('${a.id}')">Déverrouiller le contact — ${state.settings.unlockPrice} ${state.settings.currency}</button>`}
       </div>
     </div>`;
@@ -677,13 +754,60 @@ function renderModal(){
           <div class="contact-line" style="justify-content:center;">
             <span class="mono">${countryPrefix(a.country)} ${a.phone}</span>
           </div>
-          <button class="btn btn-ochre" style="width:100%;margin-top:18px;" onclick="closeModal()">Fermer</button>
+          <button class="btn btn-ochre" style="width:100%;margin-top:18px;" onclick="closeModal();openReview('${a.id}')">★ Laisser un avis maintenant</button>
+          <button class="btn btn-outline" style="width:100%;margin-top:10px;" onclick="closeModal()">Fermer</button>
         </div>
       </div>`;
       return;
     }
   }
+
+  if(m.type==="review"){
+    const a=m.artisan;
+    const rating=m.rating||0;
+    root.innerHTML=`
+    <div class="modal-bg" onclick="closeModalBg(event)">
+      <div class="modal">
+        <button class="close-x" onclick="closeModal()">✕</button>
+        <h2>Votre avis sur ${a.name}</h2>
+        <div class="sub">Votre note aide les autres visiteurs et permet à l'administrateur de suivre la qualité des artisans.</div>
+        <div class="star-select" id="star-select">
+          ${[1,2,3,4,5].map(n=>`<span class="${n<=rating?'on':''}" onclick="setReviewRating(${n})">★</span>`).join("")}
+        </div>
+        <div class="field"><label>Commentaire (optionnel)</label><textarea id="review-comment" rows="3" placeholder="Décrivez votre expérience avec cet artisan"></textarea></div>
+        <button class="btn btn-ochre" style="width:100%;" ${rating?'':'disabled'} onclick="submitReview()">Envoyer mon avis</button>
+      </div>
+    </div>`;
+    return;
+  }
 }
+
+window.openReview=function(artisanId){
+  const a=state.artisans.find(x=>x.id===artisanId);
+  if(!a) return;
+  state.modal={type:"review", artisan:a, rating:0};
+  renderModal();
+};
+window.setReviewRating=function(n){ state.modal.rating=n; renderModal(); };
+window.submitReview=function(){
+  const m=state.modal;
+  const a=m.artisan;
+  if(!m.rating) return;
+  const comment=document.getElementById("review-comment").value.trim();
+  const lastTx=state.transactions.slice().reverse().find(t=>t.artisan===a.name);
+  state.reviews.unshift({
+    id:"R"+Date.now(), artisanId:a.id, artisanName:a.name,
+    rating:m.rating, comment, payerName:(lastTx&&lastTx.payerName)||"Client",
+    date:new Date().toISOString().slice(0,10)
+  });
+  const prevAvg=parseFloat(a.rating)||0;
+  const prevCount=a.reviews||0;
+  a.rating=((prevAvg*prevCount + m.rating)/(prevCount+1)).toFixed(1);
+  a.reviews=prevCount+1;
+  toast("Merci pour votre avis !");
+  closeModal();
+  render();
+};
 
 window.selectMethod=function(name){ state.modal.method=name; renderModal(); };
 window.goToInfo=function(){ state.modal.step="info"; renderModal(); };
@@ -825,6 +949,7 @@ function viewArtisanDashboard(){
     <div class="statcard"><div class="n"><span class="badge ${a.status==='actif'?'badge-active':'badge-suspended'}">${a.status}</span></div><div class="l">Statut du compte</div></div>
   </div>
 
+  <div class="two-col">
   <div class="panel" style="max-width:560px;">
     <h3>Mes informations & compétences</h3>
     <div class="sub">Ces informations sont visibles publiquement sur le marketplace (sauf le téléphone, masqué jusqu'au paiement).</div>
@@ -842,6 +967,20 @@ function viewArtisanDashboard(){
     <div class="field"><label>Téléphone</label><input id="db-phone" value="${a.phone}"></div>
     <div class="field"><label>Présentation / savoir-faire proposé</label><textarea id="db-bio" rows="4">${a.bio}</textarea></div>
     <button class="btn btn-ochre" style="width:100%;" onclick="saveArtisanProfile()">Enregistrer les modifications</button>
+  </div>
+
+  <div class="panel">
+    <h3>Avis reçus des clients</h3>
+    <div class="sub">Visibles publiquement sur votre profil marketplace.</div>
+    ${(()=>{ const myReviews=state.reviews.filter(r=>r.artisanId===a.id);
+      return myReviews.length===0
+        ? `<div class="empty">Aucun avis pour l'instant.</div>`
+        : myReviews.map(r=>`<div class="review-item">
+            <div class="rh"><span>${"★".repeat(r.rating)}${"☆".repeat(5-r.rating)}</span><span>${r.date}</span></div>
+            <div>${r.comment||"<i style='color:var(--cream-dim)'>Sans commentaire</i>"}</div>
+          </div>`).join("");
+    })()}
+  </div>
   </div>`;
 }
 
@@ -1333,11 +1472,17 @@ window.saveAdminCreds=function(){
 
 /* ============================ HANDLERS FILTRES HOME ============================ */
 
+let searchCursorPos=null;
 function attachHandlers(){
   const fs=document.getElementById("f-sector");
   const fc=document.getElementById("f-country");
+  const fq=document.getElementById("f-search");
   if(fs) fs.onchange=()=>{ state.filterSector=fs.value; render(); };
   if(fc) fc.onchange=()=>{ state.filterCountry=fc.value; render(); };
+  if(fq){
+    fq.oninput=()=>{ state.searchQuery=fq.value; searchCursorPos=fq.selectionStart; render(); };
+    if(searchCursorPos!==null){ fq.focus(); fq.setSelectionRange(searchCursorPos, searchCursorPos); }
+  }
   if(document.getElementById("ar-sector")) refreshMetiers();
   if(document.getElementById("db-sector")) refreshDbMetiers();
   if(state.view==="admin-dashboard" && adminTab==="analytics") initAnalyticsCharts();
