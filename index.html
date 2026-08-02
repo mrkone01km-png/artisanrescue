@@ -213,16 +213,75 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
 .footer-note{color:var(--cream-dim);font-size:12px;text-align:center;margin-top:60px;line-height:1.7;}
 .empty{color:var(--cream-dim);font-size:14px;padding:30px;text-align:center;border:1px dashed var(--line);border-radius:12px;}
+
+/* ============ RANGÉES D'ONGLETS (légal / admin) : défilement horizontal ============ */
+.tabrow{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;}
+.tabrow::-webkit-scrollbar{display:none;}
+.tabrow .navbtn{flex:0 0 auto;white-space:nowrap;}
+
+/* ============ MOBILE ============ */
+@media(max-width:760px){
+  .topbar-inner{padding:10px 14px;gap:8px;}
+  .logo{font-size:15px;gap:7px;min-width:0;}
+  .logo-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:22vw;}
+  .logo-mark{width:30px;height:30px;font-size:12px;flex-shrink:0;}
+  nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;max-width:34vw;}
+  nav::-webkit-scrollbar{display:none;}
+  .navbtn{flex:0 0 auto;white-space:nowrap;padding:7px 10px;font-size:12.5px;}
+  #cloud-badge{padding:4px 7px;font-size:11px;}
+  #cloud-badge .cloud-label{display:none;}
+  #install-app-btn{padding:7px 9px;font-size:12px;}
+  #install-app-btn .install-label{display:none;}
+
+  .wrap{padding:22px 16px 60px;}
+  .hero{padding:28px 0 22px;}
+  .hero h1{font-size:24px;line-height:1.15;}
+  .hero p{font-size:13.5px;}
+  .btnrow{flex-direction:column;}
+  .btnrow .btn{width:100%;justify-content:center;}
+
+  .filters:not(.tabrow){flex-direction:column;align-items:stretch;}
+  .filters:not(.tabrow) select,
+  .filters:not(.tabrow) input{width:100%;min-width:0;}
+
+  .grid{grid-template-columns:1fr;gap:14px;}
+  .card{padding:16px;}
+
+  .modal{padding:18px;max-width:100%;}
+  .paymethods{grid-template-columns:1fr;}
+
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:8px;}
+  .kpi{padding:11px 12px;}
+  .statcards{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .statcard{padding:13px 14px;}
+  .statcard .n{font-size:16px;}
+
+  table{font-size:12px;}
+  th,td{padding:8px 7px;}
+  .table-wrap{padding:2px;}
+
+  .section-head{flex-direction:column;align-items:flex-start;gap:6px;margin:30px 0 14px;}
+  .settings-grid{gap:14px;}
+  .panel{padding:16px;}
+
+  .barrow{grid-template-columns:90px 1fr 40px;gap:6px;font-size:12px;}
+  .chart-box{height:200px;}
+}
+
+@media(max-width:400px){
+  .kpi-row,.statcards{grid-template-columns:1fr;}
+  nav{max-width:28vw;}
+}
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <div class="topbar-inner">
-    <div class="logo"><div class="logo-mark">AR</div>ArtisanRescue</div>
+    <div class="logo"><div class="logo-mark">AR</div><span class="logo-text">ArtisanRescue</span></div>
     <nav id="mainnav"></nav>
     <span id="cloud-badge" class="pill" style="white-space:nowrap;"></span>
-    <button id="install-app-btn" class="btn btn-ochre btn-sm" style="display:none;" onclick="installApp()">📲 Installer l'app</button>
+    <button id="install-app-btn" class="btn btn-ochre btn-sm" style="display:none;" onclick="installApp()">📲<span class="install-label"> Installer l'app</span></button>
   </div>
   <div class="wax"></div>
 </div>
@@ -587,7 +646,9 @@ function renderNav(){
   ).join("");
   const badge=document.getElementById("cloud-badge");
   if(badge){
-    badge.textContent = cloudReady ? "🟢 Base de données en ligne" : "🟡 Mode démo local";
+    badge.innerHTML = cloudReady
+      ? `🟢<span class="cloud-label"> Base de données en ligne</span>`
+      : `🟡<span class="cloud-label"> Mode démo local</span>`;
     badge.title = cloudReady ? "Données partagées, stockées sur Supabase" : "Données stockées uniquement dans ce navigateur";
   }
 }
@@ -645,7 +706,7 @@ function viewLegal(){
     <div class="eyebrow">Informations légales</div>
     <h1 style="font-size:30px;">${tabs.find(t=>t[0]===legalTab)[1]}</h1>
   </div>
-  <div class="filters">
+  <div class="filters tabrow">
     ${tabs.map(([k,l])=>`<button class="navbtn ${legalTab===k?'active':''}" onclick="goLegal('${k}')">${l}</button>`).join("")}
   </div>
   <div class="panel" style="max-width:720px;line-height:1.7;font-size:14px;color:var(--cream-dim);">
@@ -1246,7 +1307,7 @@ function viewAdminDashboard(){
     <div><h2>Back-office administrateur</h2><p>Connecté en tant que ${cloudReady ? (currentAdminEmail||"administrateur") : state.admin.username}</p></div>
     <button class="btn btn-outline btn-sm" onclick="adminLogout()">Se déconnecter</button>
   </div>
-  <div class="filters">
+  <div class="filters tabrow">
     ${tabs.map(([k,l])=>`<button class="navbtn ${adminTab===k?'active':''}" onclick="setAdminTab('${k}')">${l}</button>`).join("")}
   </div>
   <div id="admin-body">${renderAdminTab()}</div>
