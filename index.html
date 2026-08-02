@@ -16,6 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root{
   --indigo-950:#141b30;
@@ -220,6 +221,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   <div class="topbar-inner">
     <div class="logo"><div class="logo-mark">AR</div>ArtisanRescue</div>
     <nav id="mainnav"></nav>
+    <span id="cloud-badge" class="pill" style="white-space:nowrap;"></span>
     <button id="install-app-btn" class="btn btn-ochre btn-sm" style="display:none;" onclick="installApp()">📲 Installer l'app</button>
   </div>
   <div class="wax"></div>
@@ -371,6 +373,90 @@ const LAST_NAMES=["Kouassi","Diop","Traoré","Bamba","Koné","N'Guessan","Cissé
 function rand(arr){return arr[Math.floor(Math.random()*arr.length)];}
 function randPhone(){return "0"+Math.floor(100000000+Math.random()*899999999).toString().slice(0,8);}
 
+/* ============================ BASE DE DONNÉES (SUPABASE) ============================ */
+// 1. Crée un projet gratuit sur https://supabase.com (aucune carte bancaire requise)
+// 2. Exécute le script SQL fourni (artisanrescue-supabase-schema.sql) dans l'éditeur SQL Supabase
+// 3. Remplace les deux valeurs ci-dessous par "Project URL" et "anon public key"
+//    (Supabase → Settings → API)
+const SUPABASE_URL = "https://zxlpcwhdfwgemmzuyxjn.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4bHBjd2hkZndnZW1tenV5eGpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MzMzMjgsImV4cCI6MjEwMTIwOTMyOH0.d7aTeERy3bsVaz6LkbcEf46BOrKhe-WjDnPyc2_OGCE";
+
+let sb = null;
+let cloudReady = false;
+try{
+  if(typeof supabase!=="undefined" && SUPABASE_URL.startsWith("http") && SUPABASE_ANON_KEY.length>20){
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    cloudReady = true;
+  }
+}catch(e){ cloudReady=false; }
+
+function mapArtisanFromDb(r){
+  return { id:r.id, name:r.name, sector:r.sector, metier:r.metier, country:r.country, city:r.city,
+    phone:r.phone, password:r.password, rating:String(r.rating??"0.0"), reviews:r.reviews_count||0,
+    status:r.status, bio:r.bio, joined:r.joined };
+}
+function artisanToDb(a){
+  return { id:a.id, name:a.name, sector:a.sector, metier:a.metier, country:a.country, city:a.city,
+    phone:a.phone, password:a.password, rating:parseFloat(a.rating)||0, reviews_count:a.reviews||0,
+    status:a.status, bio:a.bio, joined:a.joined };
+}
+function mapTxFromDb(r){
+  return { id:r.id, artisan:r.artisan, method:r.method, payerName:r.payer_name, payerAccount:r.payer_account,
+    artisanSector:r.artisan_sector, artisanMetier:r.artisan_metier, artisanCountry:r.artisan_country,
+    artisanCity:r.artisan_city, amount:r.amount, date:r.date };
+}
+function txToDb(t){
+  return { id:t.id, artisan:t.artisan, method:t.method, payer_name:t.payerName, payer_account:t.payerAccount,
+    artisan_sector:t.artisanSector, artisan_metier:t.artisanMetier, artisan_country:t.artisanCountry,
+    artisan_city:t.artisanCity, amount:t.amount, date:t.date };
+}
+function mapReviewFromDb(r){
+  return { id:r.id, artisanId:r.artisan_id, artisanName:r.artisan_name, rating:r.rating, comment:r.comment,
+    payerName:r.payer_name, date:r.date };
+}
+function reviewToDb(r){
+  return { id:r.id, artisan_id:r.artisanId, artisan_name:r.artisanName, rating:r.rating, comment:r.comment,
+    payer_name:r.payerName, date:r.date };
+}
+
+async function cloudLoadAll(){
+  if(!cloudReady) return false;
+  try{
+    const [artisansRes, txRes, reviewsRes, settingsRes] = await Promise.all([
+      sb.from("artisans").select("*").order("joined",{ascending:false}),
+      sb.from("transactions").select("*").order("date",{ascending:false}),
+      sb.from("reviews").select("*").order("date",{ascending:false}),
+      sb.from("admin_settings").select("*").eq("id",1).maybeSingle()
+    ]);
+    if(artisansRes.error) throw artisansRes.error;
+    state.artisans = (artisansRes.data||[]).map(mapArtisanFromDb);
+    state.transactions = (txRes.data||[]).map(mapTxFromDb);
+    state.reviews = (reviewsRes.data||[]).map(mapReviewFromDb);
+    if(settingsRes.data){
+      state.admin = { username:settingsRes.data.admin_username, password:settingsRes.data.admin_password };
+      state.settings = { unlockPrice:settingsRes.data.unlock_price, currency:settingsRes.data.currency, numbers:settingsRes.data.numbers };
+    }
+    return true;
+  }catch(e){
+    console.error("Supabase load error:", e);
+    return false;
+  }
+}
+async function cloudInsertArtisan(a){ if(!cloudReady) return; try{ await sb.from("artisans").insert(artisanToDb(a)); }catch(e){ console.error(e); toast("⚠ Enregistré localement seulement (erreur base de données)."); } }
+async function cloudUpdateArtisan(a){ if(!cloudReady) return; try{ await sb.from("artisans").update(artisanToDb(a)).eq("id",a.id); }catch(e){ console.error(e); toast("⚠ Mise à jour locale seulement (erreur base de données)."); } }
+async function cloudDeleteArtisan(id){ if(!cloudReady) return; try{ await sb.from("artisans").delete().eq("id",id); }catch(e){ console.error(e); } }
+async function cloudInsertTx(t){ if(!cloudReady) return; try{ await sb.from("transactions").insert(txToDb(t)); }catch(e){ console.error(e); } }
+async function cloudInsertReview(r){ if(!cloudReady) return; try{ await sb.from("reviews").insert(reviewToDb(r)); }catch(e){ console.error(e); } }
+async function cloudSaveSettings(){
+  if(!cloudReady) return;
+  try{
+    await sb.from("admin_settings").update({
+      admin_username:state.admin.username, admin_password:state.admin.password,
+      unlock_price:state.settings.unlockPrice, currency:state.settings.currency, numbers:state.settings.numbers
+    }).eq("id",1);
+  }catch(e){ console.error(e); toast("⚠ Sauvegardé localement seulement (erreur base de données)."); }
+}
+
 function seedArtisans(){
   const list=[];
   const statuses=["actif","actif","actif","actif","suspendu"];
@@ -500,6 +586,11 @@ function renderNav(){
   document.getElementById("mainnav").innerHTML = items.map(it=>
     `<button class="navbtn ${state.view===it.v||(it.v==='admin-gate'&&state.view.startsWith('admin'))?'active':''}" onclick="go('${it.v}')">${it.l}</button>`
   ).join("");
+  const badge=document.getElementById("cloud-badge");
+  if(badge){
+    badge.textContent = cloudReady ? "🟢 Base de données en ligne" : "🟡 Mode démo local";
+    badge.title = cloudReady ? "Données partagées, stockées sur Supabase" : "Données stockées uniquement dans ce navigateur";
+  }
 }
 
 function go(view){
@@ -810,15 +901,18 @@ window.submitReview=function(){
   if(!m.rating) return;
   const comment=document.getElementById("review-comment").value.trim();
   const lastTx=state.transactions.slice().reverse().find(t=>t.artisan===a.name);
-  state.reviews.unshift({
+  const review={
     id:"R"+Date.now(), artisanId:a.id, artisanName:a.name,
     rating:m.rating, comment, payerName:(lastTx&&lastTx.payerName)||"Client",
     date:new Date().toISOString().slice(0,10)
-  });
+  };
+  state.reviews.unshift(review);
   const prevAvg=parseFloat(a.rating)||0;
   const prevCount=a.reviews||0;
   a.rating=((prevAvg*prevCount + m.rating)/(prevCount+1)).toFixed(1);
   a.reviews=prevCount+1;
+  cloudInsertReview(review);
+  cloudUpdateArtisan(a);
   toast("Merci pour votre avis !");
   closeModal();
   render();
@@ -838,12 +932,14 @@ window.goToPay=function(){
 window.confirmPay=function(){
   const a=state.modal.artisan;
   state.unlockedIds.add(a.id);
-  state.transactions.push({
+  const tx={
     id:"T"+Date.now(), artisan:a.name, method:state.modal.method,
     payerName:state.modal.payerName, payerAccount:state.modal.payerAccount,
     artisanSector:a.sector, artisanMetier:a.metier, artisanCountry:a.country, artisanCity:a.city,
     amount:state.settings.unlockPrice, date:new Date().toISOString().slice(0,16).replace("T"," ")
-  });
+  };
+  state.transactions.push(tx);
+  cloudInsertTx(tx);
   state.modal.step="done";
   renderModal();
   render();
@@ -909,6 +1005,7 @@ window.submitArtisan=function(){
   };
   state.artisans.unshift(a);
   state.currentArtisanId=a.id;
+  cloudInsertArtisan(a);
   toast("Profil artisan créé avec succès ! Vous êtes connecté.");
   go("artisan-dashboard");
 };
@@ -1017,6 +1114,7 @@ window.saveArtisanProfile=function(){
   a.city=document.getElementById("db-city").value||a.city;
   a.phone=document.getElementById("db-phone").value||a.phone;
   a.bio=document.getElementById("db-bio").value||a.bio;
+  cloudUpdateArtisan(a);
   toast("Profil mis à jour.");
   render();
 };
@@ -1410,11 +1508,13 @@ function adminArtisansTable(){
 window.toggleArtisanStatus=function(id){
   const a=state.artisans.find(x=>x.id===id);
   a.status = a.status==="actif" ? "suspendu" : "actif";
+  cloudUpdateArtisan(a);
   toast(a.status==="actif" ? "Artisan réactivé." : "Artisan suspendu.");
   render();
 };
 window.deleteArtisan=function(id){
   state.artisans=state.artisans.filter(x=>x.id!==id);
+  cloudDeleteArtisan(id);
   toast("Compte artisan supprimé.");
   render();
 };
@@ -1466,6 +1566,7 @@ window.saveUnlockPrice=function(){
   state.settings.unlockPrice=Number(document.getElementById("set-price").value)||state.settings.unlockPrice;
   state.settings.currency=document.getElementById("set-currency").value||state.settings.currency;
   saveAdminConfig();
+  cloudSaveSettings();
   toast("Prix de déverrouillage mis à jour.");
   render();
 };
@@ -1475,6 +1576,7 @@ window.saveNumbers=function(){
     if(el) state.settings.numbers[name]=el.value;
   });
   saveAdminConfig();
+  cloudSaveSettings();
   toast("Numéros de paiement mis à jour.");
   render();
 };
@@ -1484,6 +1586,7 @@ window.saveAdminCreds=function(){
   if(u) state.admin.username=u;
   if(p) state.admin.password=p;
   saveAdminConfig();
+  cloudSaveSettings();
   toast("Identifiants administrateur mis à jour.");
   render();
 };
@@ -1507,7 +1610,16 @@ function attachHandlers(){
 }
 
 /* ============================ INIT ============================ */
-render();
+render(); // premier affichage immédiat avec les données locales/démo
+
+(async function initCloud(){
+  if(cloudReady){
+    const ok = await cloudLoadAll();
+    if(ok){ toast("Connecté à la base de données en ligne."); }
+    else { cloudReady=false; toast("⚠ Base de données injoignable — mode démo local activé."); }
+    render();
+  }
+})();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
