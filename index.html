@@ -218,6 +218,18 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .tabrow{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;}
 .tabrow::-webkit-scrollbar{display:none;}
 .tabrow .navbtn{flex:0 0 auto;white-space:nowrap;}
+.tabrow{position:relative;}
+.tabrow::after{
+  content:"›"; position:absolute; right:0; top:0; bottom:2px; width:34px;
+  display:flex; align-items:center; justify-content:flex-end; padding-right:4px;
+  background:linear-gradient(to right, transparent, var(--indigo-950) 65%);
+  color:var(--ochre); font-size:22px; font-weight:700; pointer-events:none;
+}
+
+.hamburger-btn{
+  display:none; background:transparent; border:1px solid var(--line); color:var(--cream);
+  width:38px; height:38px; border-radius:8px; font-size:17px; align-items:center; justify-content:center;
+}
 
 /* ============ MOBILE ============ */
 @media(max-width:760px){
@@ -225,9 +237,20 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   .logo{font-size:15px;gap:7px;min-width:0;}
   .logo-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:22vw;}
   .logo-mark{width:30px;height:30px;font-size:12px;flex-shrink:0;}
-  nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;max-width:34vw;}
-  nav::-webkit-scrollbar{display:none;}
-  .navbtn{flex:0 0 auto;white-space:nowrap;padding:7px 10px;font-size:12.5px;}
+  .hamburger-btn{display:flex;}
+  nav#mainnav{
+    display:none;
+    position:fixed; top:57px; left:0; right:0; bottom:0;
+    background:var(--indigo-950); flex-direction:column; align-items:stretch;
+    padding:14px; gap:8px; overflow-y:auto; z-index:80;
+    border-top:1px solid var(--line);
+  }
+  nav#mainnav.nav-mobile-open{display:flex;}
+  nav#mainnav .navbtn{
+    width:100%; text-align:left; padding:15px 16px; font-size:15.5px;
+    border-radius:10px; border:1px solid var(--line);
+  }
+  nav#mainnav .navbtn.active{border-color:var(--ochre);}
   #cloud-badge{padding:4px 7px;font-size:11px;}
   #cloud-badge .cloud-label{display:none;}
   #install-app-btn{padding:7px 9px;font-size:12px;}
@@ -280,6 +303,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   <div class="topbar-inner">
     <div class="logo"><div class="logo-mark">AR</div><span class="logo-text">ArtisanRescue</span></div>
     <nav id="mainnav"></nav>
+    <button id="nav-toggle" class="hamburger-btn" onclick="toggleMobileNav()" aria-label="Ouvrir le menu">☰</button>
     <span id="cloud-badge" class="pill" style="white-space:nowrap;"></span>
     <button id="install-app-btn" class="btn btn-ochre btn-sm" style="display:none;" onclick="installApp()">📲<span class="install-label"> Installer l'app</span></button>
   </div>
@@ -657,13 +681,30 @@ function go(view){
   state.view=view;
   if(view==="admin-gate" && state.adminAuthed) state.view="admin-dashboard";
   if(view==="artisan-login" && state.currentArtisanId) state.view="artisan-dashboard";
+  closeMobileNav();
   render();
   window.scrollTo({top:0,behavior:"smooth"});
 }
 window.go=go;
 
+let mobileNavOpen=false;
+window.toggleMobileNav=function(){
+  mobileNavOpen=!mobileNavOpen;
+  const nav=document.getElementById("mainnav");
+  if(nav) nav.classList.toggle("nav-mobile-open", mobileNavOpen);
+  const btn=document.getElementById("nav-toggle");
+  if(btn) btn.textContent = mobileNavOpen ? "✕" : "☰";
+};
+function closeMobileNav(){
+  mobileNavOpen=false;
+  const nav=document.getElementById("mainnav");
+  if(nav) nav.classList.remove("nav-mobile-open");
+  const btn=document.getElementById("nav-toggle");
+  if(btn) btn.textContent="☰";
+}
+
 let legalTab="mentions";
-window.goLegal=function(tab){ legalTab=tab; state.view="legal"; render(); window.scrollTo({top:0,behavior:"smooth"}); };
+window.goLegal=function(tab){ legalTab=tab; state.view="legal"; closeMobileNav(); render(); window.scrollTo({top:0,behavior:"smooth"}); };
 
 function viewLegal(){
   const tabs=[["mentions","Mentions légales"],["cgu","Conditions d'utilisation"],["confidentialite","Confidentialité"],["contact","Contact"]];
