@@ -451,7 +451,6 @@ async function cloudSaveSettings(){
   if(!cloudReady) return;
   try{
     await sb.from("admin_settings").update({
-      admin_username:state.admin.username, admin_password:state.admin.password,
       unlock_price:state.settings.unlockPrice, currency:state.settings.currency, numbers:state.settings.numbers
     }).eq("id",1);
   }catch(e){ console.error(e); toast("⚠ Sauvegardé localement seulement (erreur base de données)."); }
@@ -1193,15 +1192,17 @@ window.exportFullDatabaseXLSX=function(){
 
 /* ============================ ADMIN ============================ */
 
+let currentAdminEmail=null;
+
 function viewAdminGate(){
   return `
   <div class="hero" style="padding-top:56px;">
     <div class="eyebrow">Back-office</div>
     <h1 style="font-size:32px;">Connexion administrateur</h1>
-    <p>Accès réservé. Connectez-vous avec vos identifiants administrateur.</p>
+    <p>${cloudReady ? "Connectez-vous avec l'email et le mot de passe de votre compte administrateur Supabase." : "Accès réservé. Connectez-vous avec vos identifiants administrateur."}</p>
   </div>
   <div class="panel" style="max-width:420px;">
-    <div class="field"><label>Identifiant</label><input id="adm-user" placeholder="Votre identifiant"></div>
+    <div class="field"><label>${cloudReady?"Email":"Identifiant"}</label><input id="adm-user" placeholder="${cloudReady?"vous@exemple.com":"Votre identifiant"}"></div>
     <div class="field"><label>Mot de passe</label>
       <div class="pw-wrap"><input id="adm-pass" type="password" placeholder="••••••••">
         <button type="button" class="pw-eye" onclick="togglePwd('adm-pass',this)">👁</button></div>
@@ -1210,12 +1211,22 @@ function viewAdminGate(){
   </div>`;
 }
 
-window.tryAdminLogin=function(){
+window.tryAdminLogin=async function(){
   const u=document.getElementById("adm-user").value.trim();
   const p=document.getElementById("adm-pass").value.trim();
-  if(u===state.admin.username && p===state.admin.password){
+  if(cloudReady){
+    const {data,error} = await sb.auth.signInWithPassword({ email:u, password:p });
+    if(error){ toast("Identifiants incorrects."); return; }
+    currentAdminEmail = data.user.email;
     state.adminAuthed=true;
     toast("Connexion réussie.");
+    go("admin-dashboard");
+    return;
+  }
+  // Mode démo local (Supabase non connecté) — repli non sécurisé, pour test uniquement
+  if(u===state.admin.username && p===state.admin.password){
+    state.adminAuthed=true;
+    toast("Connexion réussie (mode démo local).");
     go("admin-dashboard");
   } else {
     toast("Identifiants incorrects.");
@@ -1232,7 +1243,7 @@ function viewAdminDashboard(){
   ];
   return `
   <div class="section-head" style="margin-top:10px;">
-    <div><h2>Back-office administrateur</h2><p>Connecté en tant que ${state.admin.username}</p></div>
+    <div><h2>Back-office administrateur</h2><p>Connecté en tant que ${cloudReady ? (currentAdminEmail||"administrateur") : state.admin.username}</p></div>
     <button class="btn btn-outline btn-sm" onclick="adminLogout()">Se déconnecter</button>
   </div>
   <div class="filters">
@@ -1242,7 +1253,12 @@ function viewAdminDashboard(){
   `;
 }
 
-window.adminLogout=function(){ state.adminAuthed=false; go("home"); };
+window.adminLogout=function(){
+  state.adminAuthed=false;
+  if(cloudReady){ sb.auth.signOut(); }
+  go("home");
+};
+
 
 function renderAdminTab(){
   if(adminTab==="overview") return adminOverview();
@@ -1540,14 +1556,24 @@ function adminSettings(){
     </div>
 
     <div class="panel">
-      <h3>Mot de passe admin</h3>
-      <div class="sub">Identifiant actuel : <span class="mono">${state.admin.username}</span></div>
-      <div class="field"><label>Nouvel identifiant</label><input id="set-user" value="${state.admin.username}"></div>
-      <div class="field"><label>Nouveau mot de passe</label>
-        <div class="pw-wrap"><input id="set-pass" type="password" placeholder="Laisser vide pour ne pas changer">
-          <button type="button" class="pw-eye" onclick="togglePwd('set-pass',this)">👁</button></div>
-      </div>
-      <button class="btn btn-ochre" onclick="saveAdminCreds()">Mettre à jour</button>
+      <h3>Sécurité du compte admin</h3>
+      ${cloudReady ? `
+        <div class="sub">Connecté avec l'email : <span class="mono">${currentAdminEmail||"—"}</span>. Pour changer d'email ou créer d'autres administrateurs, utilisez Supabase → Authentication → Users.</div>
+        <div class="field"><label>Nouveau mot de passe</label>
+          <div class="pw-wrap"><input id="set-pass" type="password" placeholder="Nouveau mot de passe">
+            <button type="button" class="pw-eye" onclick="togglePwd('set-pass',this)">👁</button></div>
+        </div>
+        <button class="btn btn-ochre" onclick="saveAdminCreds()">Mettre à jour le mot de passe</button>
+      ` : `
+        <div class="sub" style="color:var(--terracotta);">⚠ Mode démo local — non sécurisé. Connectez Supabase pour une vraie authentification.</div>
+        <div class="sub">Identifiant actuel : <span class="mono">${state.admin.username}</span></div>
+        <div class="field"><label>Nouvel identifiant</label><input id="set-user" value="${state.admin.username}"></div>
+        <div class="field"><label>Nouveau mot de passe</label>
+          <div class="pw-wrap"><input id="set-pass" type="password" placeholder="Laisser vide pour ne pas changer">
+            <button type="button" class="pw-eye" onclick="togglePwd('set-pass',this)">👁</button></div>
+        </div>
+        <button class="btn btn-ochre" onclick="saveAdminCreds()">Mettre à jour</button>
+      `}
     </div>
 
     <div class="panel">
@@ -1580,14 +1606,22 @@ window.saveNumbers=function(){
   toast("Numéros de paiement mis à jour.");
   render();
 };
-window.saveAdminCreds=function(){
-  const u=document.getElementById("set-user").value.trim();
+window.saveAdminCreds=async function(){
   const p=document.getElementById("set-pass").value.trim();
+  if(cloudReady){
+    if(!p){ toast("Saisissez un nouveau mot de passe."); return; }
+    const {error} = await sb.auth.updateUser({ password:p });
+    if(error){ toast("Erreur : "+error.message); return; }
+    toast("Mot de passe mis à jour.");
+    document.getElementById("set-pass").value="";
+    return;
+  }
+  // Mode démo local uniquement
+  const u=document.getElementById("set-user").value.trim();
   if(u) state.admin.username=u;
   if(p) state.admin.password=p;
   saveAdminConfig();
-  cloudSaveSettings();
-  toast("Identifiants administrateur mis à jour.");
+  toast("Identifiants administrateur mis à jour (mode démo local).");
   render();
 };
 
@@ -1617,6 +1651,10 @@ render(); // premier affichage immédiat avec les données locales/démo
     const ok = await cloudLoadAll();
     if(ok){ toast("Connecté à la base de données en ligne."); }
     else { cloudReady=false; toast("⚠ Base de données injoignable — mode démo local activé."); }
+    if(cloudReady){
+      const { data:{ session } } = await sb.auth.getSession();
+      if(session){ state.adminAuthed=true; currentAdminEmail=session.user.email; }
+    }
     render();
   }
 })();
